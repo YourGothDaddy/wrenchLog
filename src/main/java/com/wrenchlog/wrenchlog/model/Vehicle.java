@@ -20,15 +20,19 @@ public class Vehicle {
 
     private int mileage;
 
+    @Column(name = "user_id", nullable = false)
+    private String userId;
+
     public Vehicle(){
 
     }
 
-    public Vehicle(String make, String model, int year, int mileage){
+    public Vehicle(String make, String model, int year, int mileage, String userId){
         this.make = make;
         this.model = model;
         this.year = year;
         this.mileage = mileage;
+        this.userId  = userId;
     }
 
     public Long getId() { return id; }
@@ -45,4 +49,7 @@ public class Vehicle {
 
     public int getMileage() { return mileage; }
     public void setMileage(int mileage) { this.mileage = mileage; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 }
