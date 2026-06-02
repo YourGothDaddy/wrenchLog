@@ -1,6 +1,9 @@
 package com.wrenchlog.wrenchlog.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+
+import java.util.List;
 
 @Entity
 @Table(name = "vehicles")
@@ -22,6 +25,10 @@ public class Vehicle {
 
     @Column(name = "user_id", nullable = false)
     private String userId;
+
+    @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties("vehicle")
+    private List<ServiceLog> serviceLogs;
 
     public Vehicle(){
 
@@ -52,4 +59,7 @@ public class Vehicle {
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
+
+    public List<ServiceLog> getServiceLogs() { return serviceLogs; }
+    public void setServiceLogs(List<ServiceLog> serviceLogs) { this.serviceLogs = serviceLogs; }
 }
