@@ -18,7 +18,7 @@ public class Vehicle {
     @Column(name = "production_year", nullable = false)
     private int year;
 
-    private int mileage;
+    private int kilometers;
 
     @Column(name = "user_id", nullable = false)
     private String userId;
@@ -27,11 +27,11 @@ public class Vehicle {
 
     }
 
-    public Vehicle(String make, String model, int year, int mileage, String userId){
+    public Vehicle(String make, String model, int year, int kilometers, String userId){
         this.make = make;
         this.model = model;
         this.year = year;
-        this.mileage = mileage;
+        this.kilometers = kilometers;
         this.userId  = userId;
     }
 
@@ -47,8 +47,8 @@ public class Vehicle {
     public int getYear() { return year; }
     public void setYear(int year) { this.year = year; }
 
-    public int getMileage() { return mileage; }
-    public void setMileage(int mileage) { this.mileage = mileage; }
+    public int getKilometers() { return kilometers; }
+    public void setKilometers(int kilometers) { this.kilometers = kilometers; }
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }

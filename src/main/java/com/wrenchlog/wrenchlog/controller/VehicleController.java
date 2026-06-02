@@ -23,7 +23,7 @@ public class VehicleController {
     }
 
     @PostMapping
-    public ResponseEntity<Vehicle> addvehicleToGarage(@RequestBody Vehicle vehicle){
+    public ResponseEntity<Vehicle> addVehicleToGarage(@RequestBody Vehicle vehicle){
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
         return new ResponseEntity<>(savedVehicle, HttpStatus.CREATED);
     }
