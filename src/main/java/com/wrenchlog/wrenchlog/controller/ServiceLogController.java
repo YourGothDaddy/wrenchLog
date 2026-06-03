@@ -34,4 +34,14 @@ public class ServiceLogController {
                 })
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteServiceLog(@PathVariable Long id){
+        if(serviceLogRepository.existsById(id)){
+            serviceLogRepository.deleteById(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }else{
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 }
