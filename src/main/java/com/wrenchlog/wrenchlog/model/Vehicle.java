@@ -18,8 +18,8 @@ public class Vehicle {
     @Column(nullable = false)
     private String model;
 
-    @Column(name = "production_year", nullable = false)
-    private int year;
+    @Column(name = "production_year")
+    private Integer year;
 
     private int kilometers;
 
@@ -34,7 +34,7 @@ public class Vehicle {
 
     }
 
-    public Vehicle(String make, String model, int year, int kilometers, String userId){
+    public Vehicle(String make, String model, Integer year, int kilometers, String userId){
         this.make = make;
         this.model = model;
         this.year = year;
@@ -51,8 +51,8 @@ public class Vehicle {
     public String getModel() { return model; }
     public void setModel(String model) { this.model = model; }
 
-    public int getYear() { return year; }
-    public void setYear(int year) { this.year = year; }
+    public Integer getYear() { return year; }
+    public void setYear(Integer year) { this.year = year; }
 
     public int getKilometers() { return kilometers; }
     public void setKilometers(int kilometers) { this.kilometers = kilometers; }
