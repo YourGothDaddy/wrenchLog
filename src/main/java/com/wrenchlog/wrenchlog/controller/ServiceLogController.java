@@ -44,4 +44,20 @@ public class ServiceLogController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ServiceLog> modifyServiceLog(@PathVariable Long id, @RequestParam("id") Long vehicleId, @RequestBody ServiceLog serviceLog){
+        if(serviceLogRepository.existsById(id)){
+            return vehicleRepository.findById(vehicleId)
+                    .map(vehicle -> {
+                        serviceLog.setVehicle(vehicle);
+                        serviceLog.setId(id);
+                        ServiceLog savedLog = serviceLogRepository.save(serviceLog);
+                        return new ResponseEntity<>(savedLog, HttpStatus.OK);
+                    })
+                    .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        }
+
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
 }
