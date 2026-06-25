@@ -27,4 +27,14 @@ public class VehicleController {
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
         return new ResponseEntity<>(savedVehicle, HttpStatus.CREATED);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVehicleFromGarage(@PathVariable Long id){
+        if(vehicleRepository.existsById(id)){
+            vehicleRepository.deleteById(id);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }else{
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 }
