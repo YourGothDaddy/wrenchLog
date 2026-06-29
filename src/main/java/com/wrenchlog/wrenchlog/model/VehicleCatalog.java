@@ -22,7 +22,7 @@ public class VehicleCatalog {
     private String modification;
 
     @Column(name = "start_year")
-    private int startYear;
+    private Integer startYear;
 
     @Column(name = "end_year")
     private Integer endYear;
