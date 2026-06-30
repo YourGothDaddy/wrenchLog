@@ -30,6 +30,10 @@ public class Vehicle {
     @JsonIgnoreProperties("vehicle")
     private List<ServiceLog> serviceLogs;
 
+    @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties("vehicle")
+    private List<VehicleFile> files;
+
     public Vehicle(){
 
     }
@@ -62,4 +66,7 @@ public class Vehicle {
 
     public List<ServiceLog> getServiceLogs() { return serviceLogs; }
     public void setServiceLogs(List<ServiceLog> serviceLogs) { this.serviceLogs = serviceLogs; }
+
+    public List<VehicleFile> getFiles() { return files; }
+    public void setFiles(List<VehicleFile> files) { this.files = files; }
 }
