@@ -8,6 +8,8 @@ import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -96,5 +98,28 @@ public class FileStorageService {
         } catch (MalformedURLException e) {
             throw new RuntimeException("Error reading file path", e);
         }
+    }
+
+    public boolean deleteFile(Long fileId, Long vehicleId, String userId){
+        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found in database"));
+
+        if (!vehicleFile.getVehicle().getId().equals(vehicleId)) {
+            throw new IllegalArgumentException("Malicious request: File does not belong to the specified vehicle.");
+        }
+
+        if (!vehicleFile.getVehicle().getUserId().equals(userId)) {
+            throw new SecurityException("Access Denied: You do not own this vehicle.");
+        }
+
+        try {
+            Path filePath = Paths.get(vehicleFile.getFilePath());
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not delete physical file: " + e.getMessage());
+        }
+
+        vehicleFileRepository.deleteById(fileId);
+        return true;
     }
 }

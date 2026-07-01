@@ -7,6 +7,7 @@ import com.wrenchlog.wrenchlog.service.FileStorageService;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -50,5 +51,22 @@ public class VehicleFileController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadData.fileName() + "\"")
                 .contentType(MediaType.parseMediaType(downloadData.contentType()))
                 .body(downloadData.resource());
+    }
+
+    @DeleteMapping("/{fileId}")
+    public ResponseEntity<Void> deleteFile(@PathVariable Long vehicleId,
+                                           @PathVariable Long fileId,
+                                           @RequestParam("userId") String userId){
+
+        try{
+            fileStorageService.deleteFile(fileId, vehicleId, userId);
+            return new ResponseEntity<Void>(HttpStatus.NO_CONTENT);
+        } catch (SecurityException e) {
+            return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<Void>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
