@@ -1,5 +1,6 @@
 package com.wrenchlog.wrenchlog.controller;
 
+import com.wrenchlog.wrenchlog.dto.FileDownloadDto;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
 import com.wrenchlog.wrenchlog.service.FileStorageService;
@@ -43,23 +44,11 @@ public class VehicleFileController {
 
     @GetMapping("/{fileId}/download")
     public ResponseEntity<Resource> downloadFile(@PathVariable Long vehicleId, @PathVariable Long fileId) {
-        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found"));
+        FileDownloadDto downloadData = fileStorageService.loadFileAsResource(fileId);
 
-        try {
-            Path filePath = Paths.get(vehicleFile.getFilePath());
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists() || resource.isReadable()) {
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + vehicleFile.getFileName() + "\"")
-                        .contentType(MediaType.parseMediaType(vehicleFile.getFileType()))
-                        .body(resource);
-            } else {
-                throw new RuntimeException("Could not read the file!");
-            }
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Error reading file path", e);
-        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadData.fileName() + "\"")
+                .contentType(MediaType.parseMediaType(downloadData.contentType()))
+                .body(downloadData.resource());
     }
 }
