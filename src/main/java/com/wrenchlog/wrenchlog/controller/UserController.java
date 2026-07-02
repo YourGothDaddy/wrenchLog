@@ -1,5 +1,6 @@
 package com.wrenchlog.wrenchlog.controller;
 
+import com.wrenchlog.wrenchlog.dto.LoginRequest;
 import com.wrenchlog.wrenchlog.dto.RegisterRequest;
 import com.wrenchlog.wrenchlog.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,19 @@ public class UserController {
             return new ResponseEntity<String>(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e){
             return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> loginUser(@RequestBody LoginRequest request){
+        try{
+            userService.loginUser(request);
+
+            return new ResponseEntity<String>("Login successful", HttpStatus.OK);
+        } catch (SecurityException e) {
+            return new ResponseEntity<String>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+        } catch (Exception e) {
+            return new ResponseEntity<String>("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
