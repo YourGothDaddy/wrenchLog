@@ -1,6 +1,7 @@
 package com.wrenchlog.wrenchlog.controller;
 
 import com.wrenchlog.wrenchlog.dto.LoginRequest;
+import com.wrenchlog.wrenchlog.dto.LoginResponse;
 import com.wrenchlog.wrenchlog.dto.RegisterRequest;
 import com.wrenchlog.wrenchlog.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -34,11 +35,11 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody LoginRequest request){
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request){
         try{
-            userService.loginUser(request);
+            LoginResponse response = userService.loginUser(request);
 
-            return new ResponseEntity<String>("Login successful", HttpStatus.OK);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (SecurityException e) {
             return new ResponseEntity<String>(e.getMessage(), HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {

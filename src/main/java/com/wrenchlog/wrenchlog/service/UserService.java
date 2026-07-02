@@ -1,6 +1,7 @@
 package com.wrenchlog.wrenchlog.service;
 
 import com.wrenchlog.wrenchlog.dto.LoginRequest;
+import com.wrenchlog.wrenchlog.dto.LoginResponse;
 import com.wrenchlog.wrenchlog.dto.RegisterRequest;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.repository.UserRepository;
@@ -37,12 +38,14 @@ public class UserService {
         userRepository.save(newUser);
     }
 
-    public void loginUser(LoginRequest request){
+    public LoginResponse loginUser(LoginRequest request){
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new SecurityException("Invalid username or password"));
 
         if(!passwordEncoder.matches(request.password(), user.getPassword())){
             throw new SecurityException("Invalid username or password.");
         }
+
+        return new LoginResponse(user.getId(), user.getUsername(), user.getEmail());
     }
 }
