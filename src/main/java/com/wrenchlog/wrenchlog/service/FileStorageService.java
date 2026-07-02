@@ -32,7 +32,17 @@ public class FileStorageService {
             "application/pdf",
             "image/jpeg",
             "image/png",
-            "image/webp"
+            "image/webp",
+            "image/vnd.dwg",
+            "image/x-dwg",
+            "application/acad",
+            "model/vnd.dwf",
+            "drawing/x-dwf"
+    );
+
+    private static final List<String> ALLOWED_EXTENSIONS = List.of(
+            ".dwg",
+            ".dwf"
     );
 
     public FileStorageService(@Value("${file.upload-dir}") String uploadDir,
@@ -55,17 +65,28 @@ public class FileStorageService {
             throw new IllegalArgumentException("Cannot upload an empty file.");
         }
 
-        if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
-            throw new IllegalArgumentException("Invalid file type. Only PDFs and images are allowed.");
+        String originalFileName = file.getOriginalFilename();
+
+        if(originalFileName == null || originalFileName.contains("..")){
+            throw new RuntimeException("Invalid file name format.");
+        }
+
+        String contentType = file.getContentType();
+        boolean isAllowedMime = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType);
+
+        String fileExtension = "";
+        int lastIndexOfDot = originalFileName.lastIndexOf(".");
+        if (lastIndexOfDot != -1) {
+            fileExtension = originalFileName.substring(lastIndexOfDot).toLowerCase();
+        }
+        boolean isAllowedExtension = ALLOWED_EXTENSIONS.contains(fileExtension);
+
+        if (!isAllowedMime && !isAllowedExtension) {
+            throw new IllegalArgumentException("Invalid file type. Only PDFs, images, and CAD diagrams (.dwg/.dwf) are allowed.");
         }
 
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + vehicleId));
-
-        String originalFileName = file.getOriginalFilename();
-        if(originalFileName == null || originalFileName.contains("..")){
-            throw new RuntimeException("Invalid file name format.");
-        }
 
         try{
             String uniqueFileName = UUID.randomUUID().toString() + "_" + originalFileName;
@@ -74,7 +95,9 @@ public class FileStorageService {
 
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-            VehicleFile vehicleFile = new VehicleFile(originalFileName, targetLocation.toString(), file.getContentType(), vehicle);
+            String finalContentType = isAllowedMime ? contentType : "application/octet-stream";
+
+            VehicleFile vehicleFile = new VehicleFile(originalFileName, targetLocation.toString(), finalContentType, vehicle);
             return vehicleFileRepository.save(vehicleFile);
         }catch (IOException ex){
             throw new RuntimeException("Could not store file. Please try again!", ex);
