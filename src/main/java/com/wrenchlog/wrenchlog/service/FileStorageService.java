@@ -97,7 +97,12 @@ public class FileStorageService {
 
             String finalContentType = isAllowedMime ? contentType : "application/octet-stream";
 
-            VehicleFile vehicleFile = new VehicleFile(originalFileName, targetLocation.toString(), finalContentType, vehicle);
+            VehicleFile vehicleFile = new VehicleFile(
+                    originalFileName,
+                    finalContentType,
+                    targetLocation.toString(),
+                    vehicle
+            );
             return vehicleFileRepository.save(vehicleFile);
         }catch (IOException ex){
             throw new RuntimeException("Could not store file. Please try again!", ex);
@@ -131,7 +136,7 @@ public class FileStorageService {
             throw new IllegalArgumentException("Malicious request: File does not belong to the specified vehicle.");
         }
 
-        if (!vehicleFile.getVehicle().getUserId().equals(userId)) {
+        if (!vehicleFile.getVehicle().getUser().getUsername().equals(userId)) {
             throw new SecurityException("Access Denied: You do not own this vehicle.");
         }
 
