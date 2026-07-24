@@ -18,11 +18,9 @@ import java.util.List;
 @RequestMapping("/api/vehicles")
 public class VehicleController {
     private final VehicleRepository vehicleRepository;
-    private final UserRepository userRepository;
 
-    public VehicleController(VehicleRepository vehicleRepository, UserRepository userRepository){
+    public VehicleController(VehicleRepository vehicleRepository){
         this.vehicleRepository = vehicleRepository;
-        this.userRepository = userRepository;
     }
 
     @GetMapping
@@ -42,9 +40,8 @@ public class VehicleController {
     }
 
     @PostMapping
-    public ResponseEntity<VehicleResponseDTO> addVehicleToGarage(@RequestBody VehicleCreateDTO dto){
-        User user = userRepository.findByUsername(dto.getUsername())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    public ResponseEntity<VehicleResponseDTO> addVehicleToGarage(@RequestBody VehicleCreateDTO dto,
+                                                                 @AuthenticationPrincipal User user){
 
         Vehicle vehicle = new Vehicle(
                 dto.getMake(),
@@ -68,12 +65,17 @@ public class VehicleController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVehicleFromGarage(@PathVariable Long id){
-        if(vehicleRepository.existsById(id)){
-            vehicleRepository.deleteById(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }else{
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public ResponseEntity<Void> deleteVehicleFromGarage(@PathVariable Long id,
+                                                        @AuthenticationPrincipal User user){
+
+        Vehicle vehicle  = vehicleRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
+
+        if(!vehicle.getUser().getId().equals(user.getId())){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this vehicle");
         }
+
+        vehicleRepository.delete(vehicle);
+        return ResponseEntity.noContent().build();
     }
 }

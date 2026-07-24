@@ -5,7 +5,6 @@ public class VehicleCreateDTO {
     private String model;
     private Integer year;
     private int kilometers;
-    private String username;
 
     public String getMake() { return make; }
     public void setMake(String make) { this.make = make; }
@@ -18,7 +17,4 @@ public class VehicleCreateDTO {
 
     public int getKilometers() { return kilometers; }
     public void setKilometers(int kilometers) { this.kilometers = kilometers; }
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
 }
