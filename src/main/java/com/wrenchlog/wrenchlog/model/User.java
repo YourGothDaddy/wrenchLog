@@ -1,9 +1,15 @@
 package com.wrenchlog.wrenchlog.model;
 
+import com.wrenchlog.wrenchlog.enums.UserRole;
 import jakarta.persistence.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+
 
 @Entity
 @Table(
@@ -19,7 +25,7 @@ import java.util.List;
                 )
         }
 )
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,6 +48,10 @@ public class User {
     )
     private List<Vehicle> vehicles = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private UserRole role = UserRole.USER;
+
     public User() {
     }
 
@@ -62,6 +72,23 @@ public class User {
         vehicle.setUser(null);
     }
 
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
+
 
     public Long getId() {
         return id;
@@ -71,7 +98,7 @@ public class User {
         this.id = id;
     }
 
-
+    @Override
     public String getUsername() {
         return username;
     }
@@ -89,7 +116,7 @@ public class User {
         this.email = email;
     }
 
-
+    @Override
     public String getPassword() {
         return password;
     }

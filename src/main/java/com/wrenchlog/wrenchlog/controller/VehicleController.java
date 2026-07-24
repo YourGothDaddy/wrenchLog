@@ -8,6 +8,7 @@ import com.wrenchlog.wrenchlog.repository.UserRepository;
 import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,8 +26,8 @@ public class VehicleController {
     }
 
     @GetMapping
-    public List<VehicleResponseDTO> getMyGarage(@RequestParam String username){
-        List<Vehicle> vehicles = vehicleRepository.findByUserUsername(username);
+    public List<VehicleResponseDTO> getMyGarage(@AuthenticationPrincipal User user){
+        List<Vehicle> vehicles = vehicleRepository.findByUserUsername(user.getUsername());
 
         return vehicles.stream()
                 .map(vehicle -> new VehicleResponseDTO(

@@ -5,17 +5,22 @@ import com.wrenchlog.wrenchlog.dto.LoginResponse;
 import com.wrenchlog.wrenchlog.dto.RegisterRequest;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.repository.UserRepository;
+import com.wrenchlog.wrenchlog.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder){
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public void registerNewUser(RegisterRequest request){
@@ -46,6 +51,12 @@ public class UserService {
             throw new SecurityException("Invalid username or password.");
         }
 
-        return new LoginResponse(user.getId(), user.getUsername(), user.getEmail());
+        List<String> roles = user.getAuthorities().stream()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .toList();
+
+        String token = jwtService.generateToken(user.getId(), user.getUsername(), roles);
+
+        return new LoginResponse(user.getId(), user.getUsername(), user.getEmail(), token);
     }
 }
