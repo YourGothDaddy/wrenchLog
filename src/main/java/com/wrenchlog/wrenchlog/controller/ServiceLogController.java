@@ -68,7 +68,7 @@ public class ServiceLogController {
     @PutMapping("/{id}")
     public ResponseEntity<ServiceLogResponseDTO> modifyServiceLog(
             @PathVariable Long id,
-            @RequestParam("id")  Long vehicleId,
+            @RequestParam Long vehicleId,
             @RequestBody ServiceLog serviceLog,
             @AuthenticationPrincipal User user
     ) {
