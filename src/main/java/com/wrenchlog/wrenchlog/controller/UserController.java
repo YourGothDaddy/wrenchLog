@@ -3,27 +3,34 @@ package com.wrenchlog.wrenchlog.controller;
 import com.wrenchlog.wrenchlog.dto.LoginRequest;
 import com.wrenchlog.wrenchlog.dto.LoginResponse;
 import com.wrenchlog.wrenchlog.dto.RegisterRequest;
+import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.service.UserService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class UserController {
 
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
+    private static final String COOKIE_NAME = "auth_token";
 
     private final UserService userService;
+
+    @Value("${app.jwt.expiration-ms}")
+    private long jwtExpiration;
 
     public UserController(UserService userService){
         this.userService = userService;
@@ -46,13 +53,55 @@ public class UserController {
     public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest request){
         try{
             LoginResponse response = userService.loginUser(request);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+
+            ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, response.token())
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(jwtExpiration / 1000)
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(Map.of(
+                            "id", response.id(),
+                            "username", response.username(),
+                            "email", response.email()
+                    ));
         } catch (SecurityException e) {
             return new ResponseEntity<String>(e.getMessage(), HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
             log.error("Unexpected error during login", e);
             return new ResponseEntity<String>("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(){
+        ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user){
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "email", user.getEmail()
+        ));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
