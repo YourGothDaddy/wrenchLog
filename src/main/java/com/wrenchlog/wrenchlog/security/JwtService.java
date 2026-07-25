@@ -73,4 +73,30 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+    public String generateFileDownloadToken(Long fileId, Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("scope", "file-download");
+        claims.put("fileId", fileId);
+        claims.put("userId", userId);
+
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .claims(claims)
+                .subject("download")
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + 60_000))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public Claims validateAndExtractDownloadToken(String token, Long expectedFileId) {
+        Claims claims = extractAllClaims(token);
+
+        if (!"file-download".equals(claims.get("scope"))
+                || !expectedFileId.equals(((Number) claims.get("fileId")).longValue())) {
+            throw new SecurityException("Invalid download token");
+        }
+        return claims;
+    }
 }

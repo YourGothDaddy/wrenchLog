@@ -1,6 +1,7 @@
 package com.wrenchlog.wrenchlog.service;
 
 import com.wrenchlog.wrenchlog.dto.FileDownloadDto;
+import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
@@ -26,7 +27,6 @@ import java.util.UUID;
 public class FileStorageService {
     private final Path fileStorageLocation;
     private final VehicleFileRepository vehicleFileRepository;
-    private final VehicleRepository vehicleRepository;
 
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "application/pdf",
@@ -44,22 +44,25 @@ public class FileStorageService {
             ".dwg",
             ".dwf"
     );
+    private final VehicleAccessService vehicleAccessService;
 
     public FileStorageService(@Value("${file.upload-dir}") String uploadDir,
                               VehicleFileRepository vehicleFileRepository,
-                              VehicleRepository vehicleRepository){
+                              VehicleAccessService vehicleAccessService){
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.vehicleFileRepository = vehicleFileRepository;
-        this.vehicleRepository = vehicleRepository;
 
         try{
             Files.createDirectories(this.fileStorageLocation);
         }catch (IOException ex){
             throw new RuntimeException("Could not create the upload directory.", ex);
         }
+        this.vehicleAccessService = vehicleAccessService;
     }
 
-    public VehicleFile storeFile(MultipartFile file, Long vehicleId){
+    public VehicleFile storeFile(MultipartFile file,
+                                 Long vehicleId,
+                                 User user){
 
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Cannot upload an empty file.");
@@ -85,8 +88,7 @@ public class FileStorageService {
             throw new IllegalArgumentException("Invalid file type. Only PDFs, images, and CAD diagrams (.dwg/.dwf) are allowed.");
         }
 
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + vehicleId));
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
         try{
             String uniqueFileName = UUID.randomUUID().toString() + "_" + originalFileName;
@@ -109,10 +111,7 @@ public class FileStorageService {
         }
     }
 
-    public FileDownloadDto loadFileAsResource(Long fileId) {
-        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found in database"));
-
+    private FileDownloadDto loadResourceFromDisk(VehicleFile vehicleFile) {
         try {
             Path filePath = Paths.get(vehicleFile.getFilePath()).normalize();
             Resource resource = new UrlResource(filePath.toUri());
@@ -122,13 +121,27 @@ public class FileStorageService {
             }
 
             return new FileDownloadDto(resource, vehicleFile.getFileType(), vehicleFile.getFileName());
-
         } catch (MalformedURLException e) {
             throw new RuntimeException("Error reading file path", e);
         }
     }
 
-    public boolean deleteFile(Long fileId, Long vehicleId, String userId){
+    public FileDownloadDto loadFileAsResource(Long fileId, User user) {
+        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found in database"));
+        vehicleAccessService.assertOwnership(vehicleFile.getVehicle(), user);
+        return loadResourceFromDisk(vehicleFile);
+    }
+
+    public FileDownloadDto loadFileByIdOnly(Long fileId) {
+        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found in database"));
+        return loadResourceFromDisk(vehicleFile);
+    }
+
+    public boolean deleteFile(Long fileId,
+                              Long vehicleId,
+                              User user){
         VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found in database"));
 
@@ -136,9 +149,7 @@ public class FileStorageService {
             throw new IllegalArgumentException("Malicious request: File does not belong to the specified vehicle.");
         }
 
-        if (!vehicleFile.getVehicle().getUser().getUsername().equals(userId)) {
-            throw new SecurityException("Access Denied: You do not own this vehicle.");
-        }
+        vehicleAccessService.assertOwnership(vehicleFile.getVehicle(), user);
 
         try {
             Path filePath = Paths.get(vehicleFile.getFilePath());
