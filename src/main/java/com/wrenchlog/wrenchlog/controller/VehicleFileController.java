@@ -80,16 +80,8 @@ public class VehicleFileController {
     public ResponseEntity<Void> deleteFile(@PathVariable Long vehicleId,
                                            @PathVariable Long fileId,
                                            @AuthenticationPrincipal User user) {
-        try {
-            fileStorageService.deleteFile(fileId, vehicleId, user);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (SecurityException e) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        fileStorageService.deleteFile(fileId, vehicleId, user);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @GetMapping("/{fileId}/download-token")

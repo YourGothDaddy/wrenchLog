@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -128,14 +129,14 @@ public class FileStorageService {
 
     public FileDownloadDto loadFileAsResource(Long fileId, User user) {
         VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found in database"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
         vehicleAccessService.assertOwnership(vehicleFile.getVehicle(), user);
         return loadResourceFromDisk(vehicleFile);
     }
 
     public FileDownloadDto loadFileByIdOnly(Long fileId) {
         VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found in database"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
         return loadResourceFromDisk(vehicleFile);
     }
 
