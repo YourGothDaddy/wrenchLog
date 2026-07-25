@@ -4,7 +4,6 @@ import com.wrenchlog.wrenchlog.dto.VehicleCreateDTO;
 import com.wrenchlog.wrenchlog.dto.VehicleResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
-import com.wrenchlog.wrenchlog.repository.UserRepository;
 import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

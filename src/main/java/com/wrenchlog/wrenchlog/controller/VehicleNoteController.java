@@ -21,7 +21,6 @@ public class VehicleNoteController {
     private final VehicleAccessService vehicleAccessService;
 
     public VehicleNoteController(VehicleNoteRepository vehicleNoteRepository,
-                                 VehicleRepository vehicleRepository,
                                  VehicleAccessService vehicleAccessService){
         this.vehicleNoteRepository = vehicleNoteRepository;
         this.vehicleAccessService = vehicleAccessService;
