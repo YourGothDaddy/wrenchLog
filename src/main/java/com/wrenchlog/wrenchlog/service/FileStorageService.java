@@ -5,15 +5,15 @@ import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
-import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -28,6 +28,7 @@ import java.util.UUID;
 public class FileStorageService {
     private final Path fileStorageLocation;
     private final VehicleFileRepository vehicleFileRepository;
+    private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
 
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "application/pdf",
@@ -144,22 +145,23 @@ public class FileStorageService {
                               Long vehicleId,
                               User user){
         VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found in database"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
 
         if (!vehicleFile.getVehicle().getId().equals(vehicleId)) {
-            throw new IllegalArgumentException("Malicious request: File does not belong to the specified vehicle.");
+            throw new IllegalArgumentException("File does not belong to the specified vehicle.");
         }
 
         vehicleAccessService.assertOwnership(vehicleFile.getVehicle(), user);
+
+        vehicleFileRepository.deleteById(fileId);
 
         try {
             Path filePath = Paths.get(vehicleFile.getFilePath());
             Files.deleteIfExists(filePath);
         } catch (IOException e) {
-            throw new RuntimeException("Could not delete physical file: " + e.getMessage());
+            log.warn("Failed to delete physical file at {}: {}", vehicleFile.getFilePath(), e.getMessage());
         }
 
-        vehicleFileRepository.deleteById(fileId);
         return true;
     }
 }
