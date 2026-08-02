@@ -1,5 +1,7 @@
 package com.wrenchlog.wrenchlog.controller;
 
+import com.wrenchlog.wrenchlog.dto.VehicleNoteCreateDTO;
+import com.wrenchlog.wrenchlog.dto.VehicleNoteResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleNote;
@@ -45,11 +47,11 @@ class VehicleNoteControllerTest {
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(vehicleNoteRepository.findByVehicleIdOrderByCreatedAtDesc(10L)).thenReturn(List.of(note));
 
-        ResponseEntity<List<VehicleNote>> response = vehicleNoteController.getVehicleNotes(10L, owner);
+        ResponseEntity<List<VehicleNoteResponseDTO>> response = vehicleNoteController.getVehicleNotes(10L, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-        assertEquals("Squeaky brakes", response.getBody().get(0).getTitle());
+        assertEquals("Squeaky brakes", response.getBody().get(0).title());
 
         verify(vehicleAccessService).getOwnedVehicleOrThrow(10L, owner);
     }
@@ -76,7 +78,7 @@ class VehicleNoteControllerTest {
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
-        VehicleNote incoming = new VehicleNote("Tire pressure", "Check monthly", null);
+        VehicleNoteCreateDTO dto = new VehicleNoteCreateDTO("Tire pressure", "Check monthly");
 
         VehicleNote saved = new VehicleNote("Tire pressure", "Check monthly", vehicle);
         saved.setId(301L);
@@ -84,12 +86,11 @@ class VehicleNoteControllerTest {
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(vehicleNoteRepository.save(any(VehicleNote.class))).thenReturn(saved);
 
-        ResponseEntity<?> response = vehicleNoteController.createNote(10L, incoming, owner);
+        ResponseEntity<VehicleNoteResponseDTO> response = vehicleNoteController.createNote(10L, dto, owner);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        VehicleNote body = (VehicleNote) response.getBody();
-        assertEquals(301L, body.getId());
-        assertEquals("Tire pressure", body.getTitle());
+        assertEquals(301L, response.getBody().id());
+        assertEquals("Tire pressure", response.getBody().title());
 
         verify(vehicleNoteRepository).save(any(VehicleNote.class));
     }
@@ -99,13 +100,13 @@ class VehicleNoteControllerTest {
         User attacker = new User("bob", "bob@test.com", "hashed");
         attacker.setId(2L);
 
-        VehicleNote incoming = new VehicleNote("Title", "Content", null);
+        VehicleNoteCreateDTO dto = new VehicleNoteCreateDTO("Title", "Content");
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, attacker))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
 
         assertThrows(ResponseStatusException.class,
-                () -> vehicleNoteController.createNote(10L, incoming, attacker));
+                () -> vehicleNoteController.createNote(10L, dto, attacker));
 
         verify(vehicleNoteRepository, never()).save(any());
     }
@@ -121,17 +122,16 @@ class VehicleNoteControllerTest {
         VehicleNote existing = new VehicleNote("Old title", "Old content", vehicle);
         existing.setId(300L);
 
-        VehicleNote updatedInput = new VehicleNote("New title", "New content", null);
+        VehicleNoteCreateDTO dto = new VehicleNoteCreateDTO("New title", "New content");
 
         when(vehicleNoteRepository.findById(300L)).thenReturn(Optional.of(existing));
         when(vehicleNoteRepository.save(any(VehicleNote.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ResponseEntity<?> response = vehicleNoteController.updateNote(10L, 300L, updatedInput, owner);
+        ResponseEntity<VehicleNoteResponseDTO> response = vehicleNoteController.updateNote(10L, 300L, dto, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        VehicleNote body = (VehicleNote) response.getBody();
-        assertEquals("New title", body.getTitle());
-        assertEquals("New content", body.getContent());
+        assertEquals("New title", response.getBody().title());
+        assertEquals("New content", response.getBody().content());
 
         verify(vehicleAccessService).assertOwnership(vehicle, owner);
     }
@@ -141,12 +141,12 @@ class VehicleNoteControllerTest {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
 
-        VehicleNote updatedInput = new VehicleNote("Title", "Content", null);
+        VehicleNoteCreateDTO dto = new VehicleNoteCreateDTO("Title", "Content");
 
         when(vehicleNoteRepository.findById(999L)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> vehicleNoteController.updateNote(10L, 999L, updatedInput, owner));
+                () -> vehicleNoteController.updateNote(10L, 999L, dto, owner));
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verify(vehicleNoteRepository, never()).save(any());
@@ -163,12 +163,12 @@ class VehicleNoteControllerTest {
         VehicleNote existing = new VehicleNote("Title", "Content", vehicle);
         existing.setId(300L);
 
-        VehicleNote updatedInput = new VehicleNote("New title", "New content", null);
+        VehicleNoteCreateDTO dto = new VehicleNoteCreateDTO("New title", "New content");
 
         when(vehicleNoteRepository.findById(300L)).thenReturn(Optional.of(existing));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> vehicleNoteController.updateNote(999L, 300L, updatedInput, owner));
+                () -> vehicleNoteController.updateNote(999L, 300L, dto, owner));
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verify(vehicleNoteRepository, never()).save(any());
@@ -188,14 +188,14 @@ class VehicleNoteControllerTest {
         VehicleNote existing = new VehicleNote("Title", "Content", vehicle);
         existing.setId(300L);
 
-        VehicleNote updatedInput = new VehicleNote("New title", "New content", null);
+        VehicleNoteCreateDTO dto = new VehicleNoteCreateDTO("New title", "New content");
 
         when(vehicleNoteRepository.findById(300L)).thenReturn(Optional.of(existing));
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))
                 .when(vehicleAccessService).assertOwnership(vehicle, attacker);
 
         assertThrows(ResponseStatusException.class,
-                () -> vehicleNoteController.updateNote(10L, 300L, updatedInput, attacker));
+                () -> vehicleNoteController.updateNote(10L, 300L, dto, attacker));
 
         verify(vehicleNoteRepository, never()).save(any());
     }

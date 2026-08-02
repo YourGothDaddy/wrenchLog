@@ -1,5 +1,7 @@
 package com.wrenchlog.wrenchlog.controller;
 
+import com.wrenchlog.wrenchlog.dto.ServiceReminderCreateDTO;
+import com.wrenchlog.wrenchlog.dto.ServiceReminderResponseDTO;
 import com.wrenchlog.wrenchlog.model.ServiceReminder;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
@@ -40,18 +42,17 @@ class ServiceReminderControllerTest {
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
-        ServiceReminder reminder = new ServiceReminder();
+        ServiceReminder reminder = new ServiceReminder(
+                "Oil change", null, null, null, null, null, vehicle);
         reminder.setId(200L);
-        reminder.setTitle("Oil change");
-        reminder.setVehicle(vehicle);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(reminder));
 
-        List<ServiceReminder> response = serviceReminderController.getServiceRemindersForVehicle(10L, owner);
+        List<ServiceReminderResponseDTO> response = serviceReminderController.getServiceRemindersForVehicle(10L, owner);
 
         assertEquals(1, response.size());
-        assertEquals("Oil change", response.getFirst().getTitle());
+        assertEquals("Oil change", response.get(0).title());
 
         verify(vehicleAccessService).getOwnedVehicleOrThrow(10L, owner);
     }
@@ -78,23 +79,22 @@ class ServiceReminderControllerTest {
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
-        ServiceReminder incoming = new ServiceReminder();
-        incoming.setTitle("Timing belt");
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
+                "Timing belt", "Replace every 100k km", null, 10000, 12, null);
 
-        ServiceReminder saved = new ServiceReminder();
+        ServiceReminder saved = new ServiceReminder(
+                "Timing belt", "Replace every 100k km", null, 10000, 12, null, vehicle);
         saved.setId(201L);
-        saved.setTitle("Timing belt");
-        saved.setVehicle(vehicle);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.save(any(ServiceReminder.class))).thenReturn(saved);
 
-        ResponseEntity<ServiceReminder> response =
-                serviceReminderController.addServiceReminder(10L, incoming, owner);
+        ResponseEntity<ServiceReminderResponseDTO> response =
+                serviceReminderController.addServiceReminder(10L, dto, owner);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(201L, response.getBody().getId());
-        assertEquals("Timing belt", response.getBody().getTitle());
+        assertEquals(201L, response.getBody().id());
+        assertEquals("Timing belt", response.getBody().title());
 
         verify(serviceReminderRepository).save(any(ServiceReminder.class));
     }
@@ -104,19 +104,19 @@ class ServiceReminderControllerTest {
         User attacker = new User("bob", "bob@test.com", "hashed");
         attacker.setId(2L);
 
-        ServiceReminder incoming = new ServiceReminder();
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, attacker))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
 
         assertThrows(ResponseStatusException.class,
-                () -> serviceReminderController.addServiceReminder(10L, incoming, attacker));
+                () -> serviceReminderController.addServiceReminder(10L, dto, attacker));
 
         verify(serviceReminderRepository, never()).save(any());
     }
 
     @Test
-    void modifyServiceReminder_updatesSuccessfully_whenOwner() {
+    void modifyServiceReminder_updatesSuccessfully_whenOwner_andPreservesCreatedAt() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
 
@@ -125,30 +125,23 @@ class ServiceReminderControllerTest {
 
         LocalDateTime originalCreatedAt = LocalDateTime.of(2025, 1, 1, 10, 0);
 
-        ServiceReminder existing = new ServiceReminder();
+        ServiceReminder existing = new ServiceReminder(
+                "Old title", null, null, null, null, null, vehicle);
         existing.setId(200L);
-        existing.setVehicle(vehicle);
         existing.setCreatedAt(originalCreatedAt);
 
-        ServiceReminder updatedInput = new ServiceReminder();
-        updatedInput.setTitle("Updated title");
-
-        ServiceReminder savedResult = new ServiceReminder();
-        savedResult.setId(200L);
-        savedResult.setTitle("Updated title");
-        savedResult.setVehicle(vehicle);
-        savedResult.setCreatedAt(originalCreatedAt);
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Updated title", null, null, null, null, null);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
-        when(serviceReminderRepository.save(any(ServiceReminder.class))).thenReturn(savedResult);
+        when(serviceReminderRepository.save(any(ServiceReminder.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ResponseEntity<ServiceReminder> response =
-                serviceReminderController.modifyServiceReminder(200L, 10L, updatedInput, owner);
+        ResponseEntity<ServiceReminderResponseDTO> response =
+                serviceReminderController.modifyServiceReminder(200L, 10L, dto, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Updated title", response.getBody().getTitle());
-        assertEquals(originalCreatedAt, response.getBody().getCreatedAt());
+        assertEquals("Updated title", response.getBody().title());
+        assertEquals(originalCreatedAt, response.getBody().createdAt());
 
         verify(vehicleAccessService).assertOwnership(vehicle, owner);
     }
@@ -158,12 +151,12 @@ class ServiceReminderControllerTest {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
 
-        ServiceReminder updatedInput = new ServiceReminder();
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null);
 
         when(serviceReminderRepository.findById(999L)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> serviceReminderController.modifyServiceReminder(999L, 10L, updatedInput, owner));
+                () -> serviceReminderController.modifyServiceReminder(999L, 10L, dto, owner));
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verify(serviceReminderRepository, never()).save(any());
@@ -180,18 +173,18 @@ class ServiceReminderControllerTest {
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
-        ServiceReminder existing = new ServiceReminder();
+        ServiceReminder existing = new ServiceReminder(
+                "Title", null, null, null, null, null, vehicle);
         existing.setId(200L);
-        existing.setVehicle(vehicle);
 
-        ServiceReminder updatedInput = new ServiceReminder();
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))
                 .when(vehicleAccessService).assertOwnership(vehicle, attacker);
 
         assertThrows(ResponseStatusException.class,
-                () -> serviceReminderController.modifyServiceReminder(200L, 10L, updatedInput, attacker));
+                () -> serviceReminderController.modifyServiceReminder(200L, 10L, dto, attacker));
 
         verify(serviceReminderRepository, never()).save(any());
     }
@@ -204,9 +197,9 @@ class ServiceReminderControllerTest {
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
-        ServiceReminder reminder = new ServiceReminder();
+        ServiceReminder reminder = new ServiceReminder(
+                "Title", null, null, null, null, null, vehicle);
         reminder.setId(200L);
-        reminder.setVehicle(vehicle);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(reminder));
 
@@ -241,9 +234,9 @@ class ServiceReminderControllerTest {
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
-        ServiceReminder reminder = new ServiceReminder();
+        ServiceReminder reminder = new ServiceReminder(
+                "Title", null, null, null, null, null, vehicle);
         reminder.setId(200L);
-        reminder.setVehicle(vehicle);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(reminder));
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))

@@ -1,12 +1,13 @@
 package com.wrenchlog.wrenchlog.controller;
 
+import com.wrenchlog.wrenchlog.dto.ServiceLogCreateDTO;
 import com.wrenchlog.wrenchlog.dto.ServiceLogResponseDTO;
 import com.wrenchlog.wrenchlog.model.ServiceLog;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.repository.ServiceLogRepository;
-import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +28,17 @@ public class ServiceLogController {
         this.vehicleAccessService = vehicleAccessService;
     }
 
+    private ServiceLogResponseDTO toResponseDTO(ServiceLog log) {
+        return new ServiceLogResponseDTO(
+                log.getId(),
+                log.getDescription(),
+                log.getCost(),
+                log.getKilometersAtService(),
+                log.getServiceDate(),
+                log.getVehicle().getId()
+        );
+    }
+
     @GetMapping
     public List<ServiceLogResponseDTO> getServicesForVehicle(@RequestParam Long vehicleId,
                                                              @AuthenticationPrincipal User user) {
@@ -34,42 +46,35 @@ public class ServiceLogController {
 
         return serviceLogRepository.findByVehicleId(vehicleId)
                 .stream()
-                .map(log -> new ServiceLogResponseDTO(
-                        log.getId(),
-                        log.getDescription(),
-                        log.getCost(),
-                        log.getKilometersAtService(),
-                        log.getServiceDate(),
-                        log.getVehicle().getId()))
+                .map(this::toResponseDTO)
                 .toList();
     }
 
     @PostMapping
     public ResponseEntity<ServiceLogResponseDTO> addServiceLog(
             @RequestParam Long vehicleId,
-            @RequestBody ServiceLog serviceLog,
+            @Valid @RequestBody ServiceLogCreateDTO dto,
             @AuthenticationPrincipal User user
     ) {
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
-        serviceLog.setVehicle(vehicle);
-        ServiceLog savedLog = serviceLogRepository.save(serviceLog);
+        ServiceLog log = new ServiceLog(
+                dto.description(),
+                dto.cost(),
+                dto.kilometersAtService(),
+                dto.serviceDate(),
+                vehicle
+        );
 
-        ServiceLogResponseDTO response = new ServiceLogResponseDTO(
-                savedLog.getId(),
-                savedLog.getDescription(),
-                savedLog.getCost(),
-                savedLog.getKilometersAtService(),
-                savedLog.getServiceDate(),
-                vehicle.getId());
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        ServiceLog savedLog = serviceLogRepository.save(log);
+        return new ResponseEntity<>(toResponseDTO(savedLog), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ServiceLogResponseDTO> modifyServiceLog(
             @PathVariable Long id,
             @RequestParam Long vehicleId,
-            @RequestBody ServiceLog serviceLog,
+            @Valid @RequestBody ServiceLogCreateDTO dto,
             @AuthenticationPrincipal User user
     ) {
         ServiceLog existing = serviceLogRepository.findById(id)
@@ -78,18 +83,14 @@ public class ServiceLogController {
 
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
-        serviceLog.setVehicle(vehicle);
-        serviceLog.setId(id);
-        ServiceLog savedLog = serviceLogRepository.save(serviceLog);
+        existing.setDescription(dto.description());
+        existing.setCost(dto.cost());
+        existing.setKilometersAtService(dto.kilometersAtService());
+        existing.setServiceDate(dto.serviceDate());
+        existing.setVehicle(vehicle);
 
-        ServiceLogResponseDTO response = new ServiceLogResponseDTO(
-                savedLog.getId(),
-                savedLog.getDescription(),
-                savedLog.getCost(),
-                savedLog.getKilometersAtService(),
-                savedLog.getServiceDate(),
-                vehicle.getId());
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        ServiceLog savedLog = serviceLogRepository.save(existing);
+        return new ResponseEntity<>(toResponseDTO(savedLog), HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")

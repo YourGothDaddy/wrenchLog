@@ -1,11 +1,13 @@
 package com.wrenchlog.wrenchlog.controller;
 
+import com.wrenchlog.wrenchlog.dto.VehicleNoteCreateDTO;
+import com.wrenchlog.wrenchlog.dto.VehicleNoteResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleNote;
 import com.wrenchlog.wrenchlog.repository.VehicleNoteRepository;
-import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,33 +28,46 @@ public class VehicleNoteController {
         this.vehicleAccessService = vehicleAccessService;
     }
 
+    private VehicleNoteResponseDTO toResponseDTO(VehicleNote note) {
+        return new VehicleNoteResponseDTO(
+                note.getId(),
+                note.getTitle(),
+                note.getContent(),
+                note.getCreatedAt(),
+                note.getVehicle().getId()
+        );
+    }
+
     @GetMapping
-    public ResponseEntity<List<VehicleNote>> getVehicleNotes(
+    public ResponseEntity<List<VehicleNoteResponseDTO>> getVehicleNotes(
             @PathVariable Long vehicleId,
             @AuthenticationPrincipal User user
     ){
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-        List<VehicleNote> notes = vehicleNoteRepository.findByVehicleIdOrderByCreatedAtDesc(vehicleId);
+        List<VehicleNoteResponseDTO> notes = vehicleNoteRepository.findByVehicleIdOrderByCreatedAtDesc(vehicleId)
+                .stream()
+                .map(this::toResponseDTO)
+                .toList();
         return ResponseEntity.ok(notes);
     }
 
     @PostMapping
-    public ResponseEntity<?> createNote(
+    public ResponseEntity<VehicleNoteResponseDTO> createNote(
             @PathVariable Long vehicleId,
-            @RequestBody VehicleNote incomingNote,
+            @Valid @RequestBody VehicleNoteCreateDTO dto,
             @AuthenticationPrincipal User user
     ){
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-        VehicleNote note = new VehicleNote(incomingNote.getTitle(), incomingNote.getContent(), vehicle);
+        VehicleNote note = new VehicleNote(dto.title(), dto.content(), vehicle);
         VehicleNote savedNote = vehicleNoteRepository.save(note);
-        return new ResponseEntity<>(savedNote, HttpStatus.CREATED);
+        return new ResponseEntity<>(toResponseDTO(savedNote), HttpStatus.CREATED);
     }
 
     @PutMapping("/{noteId}")
-    public ResponseEntity<?> updateNote(
+    public ResponseEntity<VehicleNoteResponseDTO> updateNote(
             @PathVariable Long vehicleId,
             @PathVariable Long noteId,
-            @RequestBody VehicleNote updatedDetails,
+            @Valid @RequestBody VehicleNoteCreateDTO dto,
             @AuthenticationPrincipal User user
     ){
         VehicleNote existingNote = vehicleNoteRepository.findById(noteId)
@@ -63,10 +78,10 @@ public class VehicleNoteController {
         }
         vehicleAccessService.assertOwnership(existingNote.getVehicle(), user);
 
-        existingNote.setTitle(updatedDetails.getTitle());
-        existingNote.setContent(updatedDetails.getContent());
+        existingNote.setTitle(dto.title());
+        existingNote.setContent(dto.content());
         VehicleNote saved = vehicleNoteRepository.save(existingNote);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(toResponseDTO(saved));
     }
 
     @DeleteMapping("/{noteId}")
