@@ -77,60 +77,6 @@ class FileStorageServiceTest {
     }
 
     @Test
-    void loadFileAsResource_returnsFile_whenOwnerAndFileExists() throws IOException {
-        User owner = new User("alice", "alice@test.com", "hashed");
-        owner.setId(1L);
-
-        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
-        vehicle.setId(10L);
-
-        Path realFile = tempDir.resolve("manual.pdf");
-        Files.writeString(realFile, "file contents");
-
-        VehicleFile vehicleFile = new VehicleFile();
-        vehicleFile.setId(400L);
-        vehicleFile.setFileName("manual.pdf");
-        vehicleFile.setFileType("application/pdf");
-        vehicleFile.setFilePath(realFile.toString());
-        vehicleFile.setVehicle(vehicle);
-
-        when(vehicleFileRepository.findById(400L)).thenReturn(Optional.of(vehicleFile));
-
-        var result = fileStorageService.loadFileAsResource(400L, owner);
-
-        assertEquals("manual.pdf", result.fileName());
-        assertEquals("application/pdf", result.contentType());
-        verify(vehicleAccessService).assertOwnership(vehicle, owner);
-    }
-
-    @Test
-    void loadFileAsResource_throwsForbidden_whenNotOwner() {
-        User attacker = new User("bob", "bob@test.com", "hashed");
-        attacker.setId(2L);
-
-        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, new User());
-        VehicleFile vehicleFile = new VehicleFile();
-        vehicleFile.setId(400L);
-        vehicleFile.setFilePath(tempDir.resolve("manual.pdf").toString());
-        vehicleFile.setVehicle(vehicle);
-
-        when(vehicleFileRepository.findById(400L)).thenReturn(Optional.of(vehicleFile));
-        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN))
-                .when(vehicleAccessService).assertOwnership(vehicle, attacker);
-
-        assertThrows(ResponseStatusException.class,
-                () -> fileStorageService.loadFileAsResource(400L, attacker));
-    }
-
-    @Test
-    void loadFileAsResource_throwsNotFound_whenFileMissingFromDatabase() {
-        when(vehicleFileRepository.findById(999L)).thenReturn(Optional.empty());
-
-        assertThrows(ResponseStatusException.class,
-                () -> fileStorageService.loadFileAsResource(999L, new User()));
-    }
-
-    @Test
     void loadFileByIdOnly_returnsFile_regardlessOfOwnership() throws IOException {
         Path realFile = tempDir.resolve("manual.pdf");
         Files.writeString(realFile, "file contents");

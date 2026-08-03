@@ -1,6 +1,7 @@
 package com.wrenchlog.wrenchlog.controller;
 
 import com.wrenchlog.wrenchlog.dto.FileDownloadDto;
+import com.wrenchlog.wrenchlog.dto.VehicleFileResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
@@ -8,7 +9,6 @@ import com.wrenchlog.wrenchlog.security.JwtService;
 import com.wrenchlog.wrenchlog.service.FileStorageService;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,9 +17,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -42,19 +39,33 @@ public class VehicleFileController {
         this.jwtService = jwtService;
     }
 
+    private VehicleFileResponseDTO toResponseDTO(VehicleFile file) {
+        return new VehicleFileResponseDTO(
+                file.getId(),
+                file.getFileName(),
+                file.getFileType(),
+                file.getUploadDate(),
+                file.getVehicle().getId()
+        );
+    }
+
     @PostMapping
-    public ResponseEntity<VehicleFile> uploadFile(@PathVariable Long vehicleId,
-                                                  @RequestParam("file") MultipartFile file,
-                                                  @AuthenticationPrincipal User user) {
+    public ResponseEntity<VehicleFileResponseDTO> uploadFile(@PathVariable Long vehicleId,
+                                                             @RequestParam("file") MultipartFile file,
+                                                             @AuthenticationPrincipal User user) {
         VehicleFile savedFile = fileStorageService.storeFile(file, vehicleId, user);
-        return ResponseEntity.ok(savedFile);
+        return ResponseEntity.ok(toResponseDTO(savedFile));
     }
 
     @GetMapping
-    public ResponseEntity<List<VehicleFile>> getVehicleFiles(@PathVariable Long vehicleId,
-                                                             @AuthenticationPrincipal User user) {
+    public ResponseEntity<List<VehicleFileResponseDTO>> getVehicleFiles(@PathVariable Long vehicleId,
+                                                                        @AuthenticationPrincipal User user) {
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-        return ResponseEntity.ok(vehicleFileRepository.findByVehicleId(vehicleId));
+        List<VehicleFileResponseDTO> files = vehicleFileRepository.findByVehicleId(vehicleId)
+                .stream()
+                .map(this::toResponseDTO)
+                .toList();
+        return ResponseEntity.ok(files);
     }
 
     @GetMapping("/{fileId}/download")
@@ -91,7 +102,6 @@ public class VehicleFileController {
             @AuthenticationPrincipal User user
     ) {
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-
         String token = jwtService.generateFileDownloadToken(fileId, user.getId());
         return ResponseEntity.ok(Map.of("token", token));
     }

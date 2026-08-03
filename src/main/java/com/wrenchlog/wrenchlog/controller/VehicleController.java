@@ -5,11 +5,12 @@ import com.wrenchlog.wrenchlog.dto.VehicleResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.repository.VehicleRepository;
+import com.wrenchlog.wrenchlog.service.VehicleAccessService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -17,9 +18,11 @@ import java.util.List;
 @RequestMapping("/api/vehicles")
 public class VehicleController {
     private final VehicleRepository vehicleRepository;
+    private final VehicleAccessService vehicleAccessService;
 
-    public VehicleController(VehicleRepository vehicleRepository){
+    public VehicleController(VehicleRepository vehicleRepository, VehicleAccessService vehicleAccessService){
         this.vehicleRepository = vehicleRepository;
+        this.vehicleAccessService = vehicleAccessService;
     }
 
     @GetMapping
@@ -39,14 +42,14 @@ public class VehicleController {
     }
 
     @PostMapping
-    public ResponseEntity<VehicleResponseDTO> addVehicleToGarage(@RequestBody VehicleCreateDTO dto,
+    public ResponseEntity<VehicleResponseDTO> addVehicleToGarage(@Valid @RequestBody VehicleCreateDTO dto,
                                                                  @AuthenticationPrincipal User user){
 
         Vehicle vehicle = new Vehicle(
-                dto.getMake(),
-                dto.getModel(),
-                dto.getYear(),
-                dto.getKilometers(),
+                dto.make(),
+                dto.model(),
+                dto.year(),
+                dto.kilometers(),
                 user
         );
 
@@ -66,14 +69,7 @@ public class VehicleController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVehicleFromGarage(@PathVariable Long id,
                                                         @AuthenticationPrincipal User user){
-
-        Vehicle vehicle  = vehicleRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
-
-        if(!vehicle.getUser().getId().equals(user.getId())){
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this vehicle");
-        }
-
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
         vehicleRepository.delete(vehicle);
         return ResponseEntity.noContent().build();
     }

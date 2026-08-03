@@ -53,11 +53,6 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    @SuppressWarnings("unchecked")
-    public List<String> extractRoles(String token) {
-        return extractClaim(token, claims -> claims.get("roles", List.class));
-    }
-
     public boolean isTokenValid(String token) {
         return !isTokenExpired(token);
     }

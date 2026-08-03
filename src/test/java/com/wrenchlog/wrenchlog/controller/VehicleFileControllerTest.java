@@ -1,6 +1,7 @@
 package com.wrenchlog.wrenchlog.controller;
 
 import com.wrenchlog.wrenchlog.dto.FileDownloadDto;
+import com.wrenchlog.wrenchlog.dto.VehicleFileResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
@@ -46,7 +47,6 @@ class VehicleFileControllerTest {
     void uploadFile_returnsOk_withCorrectData() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
-
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
@@ -57,18 +57,17 @@ class VehicleFileControllerTest {
 
         when(fileStorageService.storeFile(file, 10L, owner)).thenReturn(savedFile);
 
-        ResponseEntity<VehicleFile> response = vehicleFileController.uploadFile(10L, file, owner);
+        ResponseEntity<VehicleFileResponseDTO> response = vehicleFileController.uploadFile(10L, file, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(400L, response.getBody().getId());
-        assertEquals("manual.pdf", response.getBody().getFileName());
+        assertEquals(400L, response.getBody().id());
+        assertEquals("manual.pdf", response.getBody().fileName());
     }
 
     @Test
     void getVehicleFiles_returnsFiles_whenOwner() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
-
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
         vehicle.setId(10L);
 
@@ -78,11 +77,11 @@ class VehicleFileControllerTest {
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(vehicleFileRepository.findByVehicleId(10L)).thenReturn(List.of(file));
 
-        ResponseEntity<List<VehicleFile>> response = vehicleFileController.getVehicleFiles(10L, owner);
+        ResponseEntity<List<VehicleFileResponseDTO>> response = vehicleFileController.getVehicleFiles(10L, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-        assertEquals("manual.pdf", response.getBody().getFirst().getFileName());
+        assertEquals("manual.pdf", response.getBody().get(0).fileName());
     }
 
     @Test

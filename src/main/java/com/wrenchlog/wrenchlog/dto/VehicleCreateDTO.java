@@ -1,20 +1,19 @@
 package com.wrenchlog.wrenchlog.dto;
 
-public class VehicleCreateDTO {
-    private String make;
-    private String model;
-    private Integer year;
-    private int kilometers;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
-    public String getMake() { return make; }
-    public void setMake(String make) { this.make = make; }
+public record VehicleCreateDTO(
+        @NotBlank(message = "Make is required")
+        String make,
 
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
+        @NotBlank(message = "Model is required")
+        String model,
 
-    public Integer getYear() { return year; }
-    public void setYear(Integer year) { this.year = year; }
+        Integer year,
 
-    public int getKilometers() { return kilometers; }
-    public void setKilometers(int kilometers) { this.kilometers = kilometers; }
-}
+        @NotNull(message = "Kilometers is required")
+        @PositiveOrZero(message = "Kilometers cannot be negative")
+        Integer kilometers
+) {}

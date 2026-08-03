@@ -5,6 +5,8 @@ import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -12,8 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -26,45 +26,35 @@ import java.util.UUID;
 
 @Service
 public class FileStorageService {
-    private final Path fileStorageLocation;
-    private final VehicleFileRepository vehicleFileRepository;
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
 
+    private final Path fileStorageLocation;
+    private final VehicleFileRepository vehicleFileRepository;
+    private final VehicleAccessService vehicleAccessService;
+
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/vnd.dwg",
-            "image/x-dwg",
-            "application/acad",
-            "model/vnd.dwf",
-            "drawing/x-dwf"
+            "application/pdf", "image/jpeg", "image/png", "image/webp",
+            "image/vnd.dwg", "image/x-dwg", "application/acad",
+            "model/vnd.dwf", "drawing/x-dwf"
     );
 
-    private static final List<String> ALLOWED_EXTENSIONS = List.of(
-            ".dwg",
-            ".dwf"
-    );
-    private final VehicleAccessService vehicleAccessService;
+    private static final List<String> ALLOWED_EXTENSIONS = List.of(".dwg", ".dwf");
 
     public FileStorageService(@Value("${file.upload-dir}") String uploadDir,
                               VehicleFileRepository vehicleFileRepository,
                               VehicleAccessService vehicleAccessService){
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.vehicleFileRepository = vehicleFileRepository;
+        this.vehicleAccessService = vehicleAccessService;
 
         try{
             Files.createDirectories(this.fileStorageLocation);
         }catch (IOException ex){
             throw new RuntimeException("Could not create the upload directory.", ex);
         }
-        this.vehicleAccessService = vehicleAccessService;
     }
 
-    public VehicleFile storeFile(MultipartFile file,
-                                 Long vehicleId,
-                                 User user){
+    public VehicleFile storeFile(MultipartFile file, Long vehicleId, User user){
 
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Cannot upload an empty file.");
@@ -73,7 +63,7 @@ public class FileStorageService {
         String originalFileName = file.getOriginalFilename();
 
         if(originalFileName == null || originalFileName.contains("..")){
-            throw new RuntimeException("Invalid file name format.");
+            throw new IllegalArgumentException("Invalid file name format.");
         }
 
         String contentType = file.getContentType();
@@ -94,18 +84,13 @@ public class FileStorageService {
 
         try{
             String uniqueFileName = UUID.randomUUID().toString() + "_" + originalFileName;
-
             Path targetLocation = this.fileStorageLocation.resolve(uniqueFileName);
-
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
             String finalContentType = isAllowedMime ? contentType : "application/octet-stream";
 
             VehicleFile vehicleFile = new VehicleFile(
-                    originalFileName,
-                    finalContentType,
-                    targetLocation.toString(),
-                    vehicle
+                    originalFileName, finalContentType, targetLocation.toString(), vehicle
             );
             return vehicleFileRepository.save(vehicleFile);
         }catch (IOException ex){
@@ -113,7 +98,10 @@ public class FileStorageService {
         }
     }
 
-    private FileDownloadDto loadResourceFromDisk(VehicleFile vehicleFile) {
+    public FileDownloadDto loadFileByIdOnly(Long fileId) {
+        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
+
         try {
             Path filePath = Paths.get(vehicleFile.getFilePath()).normalize();
             Resource resource = new UrlResource(filePath.toUri());
@@ -128,22 +116,7 @@ public class FileStorageService {
         }
     }
 
-    public FileDownloadDto loadFileAsResource(Long fileId, User user) {
-        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
-        vehicleAccessService.assertOwnership(vehicleFile.getVehicle(), user);
-        return loadResourceFromDisk(vehicleFile);
-    }
-
-    public FileDownloadDto loadFileByIdOnly(Long fileId) {
-        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
-        return loadResourceFromDisk(vehicleFile);
-    }
-
-    public boolean deleteFile(Long fileId,
-                              Long vehicleId,
-                              User user){
+    public boolean deleteFile(Long fileId, Long vehicleId, User user){
         VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
 

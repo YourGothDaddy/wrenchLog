@@ -53,9 +53,9 @@ class ServiceLogControllerTest {
 
         assertEquals(1, response.size());
         ServiceLogResponseDTO dto = response.get(0);
-        assertEquals(100L, dto.getId());
-        assertEquals("Oil change", dto.getDescription());
-        assertEquals(10L, dto.getVehicleId());
+        assertEquals(100L, dto.id());
+        assertEquals("Oil change", dto.description());
+        assertEquals(10L, dto.vehicleId());
 
         verify(vehicleAccessService).getOwnedVehicleOrThrow(10L, owner);
     }
@@ -94,9 +94,9 @@ class ServiceLogControllerTest {
                 serviceLogController.addServiceLog(10L, dto, owner);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(101L, response.getBody().getId());
-        assertEquals("Brake pads", response.getBody().getDescription());
-        assertEquals(10L, response.getBody().getVehicleId());
+        assertEquals(101L, response.getBody().id());
+        assertEquals("Brake pads", response.getBody().description());
+        assertEquals(10L, response.getBody().vehicleId());
 
         verify(serviceLogRepository).save(any(ServiceLog.class));
     }
@@ -138,8 +138,8 @@ class ServiceLogControllerTest {
                 serviceLogController.modifyServiceLog(100L, 10L, dto, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Updated description", response.getBody().getDescription());
-        assertEquals(new BigDecimal("75.00"), response.getBody().getCost());
+        assertEquals("Updated description", response.getBody().description());
+        assertEquals(new BigDecimal("75.00"), response.getBody().cost());
 
         verify(vehicleAccessService).assertOwnership(vehicle, owner);
     }
