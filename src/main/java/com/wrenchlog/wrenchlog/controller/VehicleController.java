@@ -36,7 +36,7 @@ public class VehicleController {
                         vehicle.getModel(),
                         vehicle.getYear(),
                         vehicle.getKilometers(),
-                        vehicle.getUser().getUsername()
+                        user.getUsername()
                 ))
                 .toList();
     }

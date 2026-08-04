@@ -12,7 +12,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 @Service
 public class JwtService {
@@ -44,24 +43,7 @@ public class JwtService {
                 .compact();
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    public boolean isTokenValid(String token) {
-        return !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
-    }
-
-    private Claims extractAllClaims(String token) {
+    public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
@@ -86,7 +68,7 @@ public class JwtService {
     }
 
     public Claims validateAndExtractDownloadToken(String token, Long expectedFileId) {
-        Claims claims = extractAllClaims(token);
+        Claims claims = parseClaims(token);
 
         if (!"file-download".equals(claims.get("scope"))
                 || !expectedFileId.equals(((Number) claims.get("fileId")).longValue())) {
