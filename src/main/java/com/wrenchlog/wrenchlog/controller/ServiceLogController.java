@@ -6,6 +6,7 @@ import com.wrenchlog.wrenchlog.model.ServiceLog;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.repository.ServiceLogRepository;
+import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -21,11 +22,14 @@ import java.util.List;
 public class ServiceLogController {
     private final VehicleAccessService vehicleAccessService;
     private final ServiceLogRepository serviceLogRepository;
+    private final VehicleRepository vehicleRepository;
 
     public ServiceLogController(ServiceLogRepository serviceLogRepository,
-                                VehicleAccessService vehicleAccessService) {
+                                VehicleAccessService vehicleAccessService,
+                                VehicleRepository vehicleRepository) {
         this.serviceLogRepository = serviceLogRepository;
         this.vehicleAccessService = vehicleAccessService;
+        this.vehicleRepository = vehicleRepository;
     }
 
     private ServiceLogResponseDTO toResponseDTO(ServiceLog log) {
@@ -37,6 +41,13 @@ public class ServiceLogController {
                 log.getServiceDate(),
                 log.getVehicle().getId()
         );
+    }
+
+    private void advanceOdometerIfHigher(Vehicle vehicle, int kilometersAtService) {
+        if (kilometersAtService > vehicle.getKilometers()) {
+            vehicle.setKilometers(kilometersAtService);
+            vehicleRepository.save(vehicle);
+        }
     }
 
     @GetMapping
@@ -67,6 +78,8 @@ public class ServiceLogController {
         );
 
         ServiceLog savedLog = serviceLogRepository.save(log);
+        advanceOdometerIfHigher(vehicle, dto.kilometersAtService());
+
         return new ResponseEntity<>(toResponseDTO(savedLog), HttpStatus.CREATED);
     }
 
@@ -90,6 +103,8 @@ public class ServiceLogController {
         existing.setVehicle(vehicle);
 
         ServiceLog savedLog = serviceLogRepository.save(existing);
+        advanceOdometerIfHigher(vehicle, dto.kilometersAtService());
+
         return new ResponseEntity<>(toResponseDTO(savedLog), HttpStatus.OK);
     }
 

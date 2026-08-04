@@ -6,6 +6,7 @@ import com.wrenchlog.wrenchlog.model.ServiceLog;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.repository.ServiceLogRepository;
+import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,12 +28,14 @@ class ServiceLogControllerTest {
     private ServiceLogRepository serviceLogRepository;
     private VehicleAccessService vehicleAccessService;
     private ServiceLogController serviceLogController;
+    private VehicleRepository vehicleRepository;
 
     @BeforeEach
     void setUp() {
         serviceLogRepository = mock(ServiceLogRepository.class);
         vehicleAccessService = mock(VehicleAccessService.class);
-        serviceLogController = new ServiceLogController(serviceLogRepository, vehicleAccessService);
+        vehicleRepository = mock(VehicleRepository.class);
+        serviceLogController = new ServiceLogController(serviceLogRepository, vehicleAccessService, vehicleRepository);
     }
 
     @Test
@@ -241,5 +244,43 @@ class ServiceLogControllerTest {
                 () -> serviceLogController.deleteServiceLog(100L, attacker));
 
         verify(serviceLogRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void addServiceLog_advancesOdometer_whenKilometersHigherThanCurrent() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 350000, owner);
+        vehicle.setId(10L);
+
+        ServiceLogCreateDTO dto = new ServiceLogCreateDTO("Oil change", new BigDecimal("50.00"), 355000, LocalDate.now());
+
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceLogRepository.save(any(ServiceLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        serviceLogController.addServiceLog(10L, dto, owner);
+
+        assertEquals(355000, vehicle.getKilometers());
+        verify(vehicleRepository).save(vehicle);
+    }
+
+    @Test
+    void addServiceLog_doesNotChangeOdometer_whenKilometersLowerThanCurrent() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 350000, owner);
+        vehicle.setId(10L);
+
+        ServiceLogCreateDTO dto = new ServiceLogCreateDTO("Old repair", new BigDecimal("20.00"), 300000, LocalDate.now());
+
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceLogRepository.save(any(ServiceLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        serviceLogController.addServiceLog(10L, dto, owner);
+
+        assertEquals(350000, vehicle.getKilometers());
+        verify(vehicleRepository, never()).save(any());
     }
 }
