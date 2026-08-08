@@ -1,3 +1,5 @@
+![Backend CI](https://github.com/YourGothDaddy/wrenchLog/actions/workflows/ci.yml/badge.svg)
+
 # WrenchLog — Backend
 
 Spring Boot REST API for WrenchLog: user auth (JWT via httpOnly cookies), vehicles, service logs, service reminders, notes, and file attachments.
