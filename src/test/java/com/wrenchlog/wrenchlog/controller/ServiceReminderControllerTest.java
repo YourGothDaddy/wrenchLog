@@ -247,4 +247,17 @@ class ServiceReminderControllerTest {
 
         verify(serviceReminderRepository, never()).deleteById(any());
     }
+
+    @Test
+    void addServiceReminder_rejectsNegativeOdometer_beforeReachingRepository() {
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
+                "Title", null, -35, null, null, null);
+
+        var violations = jakarta.validation.Validation
+                .buildDefaultValidatorFactory()
+                .getValidator()
+                .validate(dto);
+
+        assertFalse(violations.isEmpty());
+    }
 }

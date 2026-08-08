@@ -2,6 +2,7 @@ package com.wrenchlog.wrenchlog.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.time.LocalDate;
 
@@ -11,12 +12,13 @@ public record ServiceReminderCreateDTO(
 
         String description,
 
+        @PositiveOrZero(message = "Last service odometer cannot be negative")
         Integer lastServiceAtOdometer,
 
-        @Positive(message = "Interval in odometer must be positive")
+        @PositiveOrZero(message = "Interval in odometer cannot be negative")
         Integer intervalOdometer,
 
-        @Positive(message = "Interval in months must be positive")
+        @PositiveOrZero(message = "Interval in months cannot be negative")
         Integer intervalMonths,
 
         LocalDate lastServiceAtDate
