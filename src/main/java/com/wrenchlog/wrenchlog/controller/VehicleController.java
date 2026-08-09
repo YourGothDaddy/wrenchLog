@@ -1,8 +1,6 @@
 package com.wrenchlog.wrenchlog.controller;
 
-import com.wrenchlog.wrenchlog.dto.VehicleCreateDTO;
-import com.wrenchlog.wrenchlog.dto.VehicleDetailsUpdateDTO;
-import com.wrenchlog.wrenchlog.dto.VehicleResponseDTO;
+import com.wrenchlog.wrenchlog.dto.*;
 import com.wrenchlog.wrenchlog.enums.DriveType;
 import com.wrenchlog.wrenchlog.enums.FuelType;
 import com.wrenchlog.wrenchlog.enums.TransmissionType;
@@ -11,6 +9,7 @@ import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.repository.ServiceReminderRepository;
 import com.wrenchlog.wrenchlog.repository.VehicleRepository;
+import com.wrenchlog.wrenchlog.service.BgTollService;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -21,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/vehicles")
@@ -28,12 +28,16 @@ public class VehicleController {
     private final VehicleRepository vehicleRepository;
     private final VehicleAccessService vehicleAccessService;
     private final ServiceReminderRepository serviceReminderRepository;
+    private final BgTollService bgTollService;
 
-    public VehicleController(VehicleRepository vehicleRepository, VehicleAccessService vehicleAccessService,
-                             ServiceReminderRepository serviceReminderRepository){
+    public VehicleController(VehicleRepository vehicleRepository,
+                             VehicleAccessService vehicleAccessService,
+                             ServiceReminderRepository serviceReminderRepository,
+                             BgTollService bgTollService){
         this.vehicleRepository = vehicleRepository;
         this.vehicleAccessService = vehicleAccessService;
         this.serviceReminderRepository = serviceReminderRepository;
+        this.bgTollService = bgTollService;
     }
 
     private VehicleResponseDTO toResponseDTO(Vehicle vehicle) {
@@ -121,6 +125,48 @@ public class VehicleController {
         createOrUpdateDateReminder(saved, "Inspection due", dto.inspectionDueDate());
 
         return ResponseEntity.ok(toResponseDTO(saved));
+    }
+
+    @GetMapping("/{id}/vignette-check")
+    public VignetteCheckResponseDTO checkVignette(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
+
+        if (vehicle.getPlateNumber() == null || vehicle.getPlateNumber().isBlank()) {
+            return new VignetteCheckResponseDTO(false, null, false, null, null, false, "No plate number on file");
+        }
+
+        ServiceReminder vignetteReminder = serviceReminderRepository.findByVehicleId(vehicle.getId())
+                .stream()
+                .filter(r -> "Vignette renewal".equals(r.getTitle()))
+                .findFirst()
+                .orElse(null);
+
+        boolean hasLocalReminder = vignetteReminder != null
+                && vignetteReminder.getLastServiceAtDate() != null
+                && vignetteReminder.getIntervalMonths() != null;
+
+        LocalDate enteredExpiryDate = hasLocalReminder
+                ? vignetteReminder.getLastServiceAtDate().plusMonths(vignetteReminder.getIntervalMonths())
+                : null;
+
+        Optional<BgTollVignetteDTO> vignetteData = bgTollService.lookupVignette(vehicle.getPlateNumber());
+
+        if (vignetteData.isEmpty() || vignetteData.get().validityDateTo() == null) {
+            String message = hasLocalReminder ? "BGTOLL lookup unavailable" : "No vignette data found";
+            return new VignetteCheckResponseDTO(hasLocalReminder, enteredExpiryDate, false, null, null, false, message);
+        }
+
+        LocalDate bgTollExpiryDate = vignetteData.get().validityDateTo().toLocalDate();
+        String bgTollStatus = vignetteData.get().status();
+
+        if (!hasLocalReminder) {
+            return new VignetteCheckResponseDTO(false, null, true, bgTollExpiryDate, bgTollStatus, false,
+                    "Vignette found via BGTOLL, not yet saved as a reminder");
+        }
+
+        boolean match = enteredExpiryDate.isEqual(bgTollExpiryDate);
+        String message = match ? "Confirmed by BGTOLL" : "Date does not match BGTOLL records";
+        return new VignetteCheckResponseDTO(true, enteredExpiryDate, true, bgTollExpiryDate, bgTollStatus, match, message);
     }
 
     private void createOrUpdateDateReminder(Vehicle vehicle, String title, LocalDate dueDate) {
