@@ -1,8 +1,13 @@
 package com.wrenchlog.wrenchlog.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.wrenchlog.wrenchlog.enums.DriveType;
+import com.wrenchlog.wrenchlog.enums.FuelType;
+import com.wrenchlog.wrenchlog.enums.TransmissionType;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +42,48 @@ public class Vehicle {
 
     @Column(nullable = false)
     private int kilometers;
+
+    @Column(length = 32)
+    private String vin;
+
+    @Column(name = "plate_number", length = 20)
+    private String plateNumber;
+
+    @Column(name = "engine_code", length = 30)
+    private String engineCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transmission_type")
+    private TransmissionType transmissionType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "drive_type")
+    private DriveType driveType;
+
+    @Column(length = 50)
+    private String color;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fuel_type")
+    private FuelType fuelType;
+
+    @Column(name = "fuel_tank_capacity_liters", precision = 5, scale = 1)
+    private BigDecimal fuelTankCapacityLiters;
+
+    @Column(name = "engine_oil_capacity_liters", precision = 4, scale = 2)
+    private BigDecimal engineOilCapacityLiters;
+
+    @Column(name = "engine_oil_type", length = 20)
+    private String engineOilType;
+
+    @Column(name = "tire_size", length = 20)
+    private String tireSize;
+
+    @Column(name = "purchase_date")
+    private LocalDate purchaseDate;
+
+    @Column(name = "purchase_price", precision = 10, scale = 2)
+    private BigDecimal purchasePrice;
 
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -242,4 +289,43 @@ public class Vehicle {
     public void setNotes(List<VehicleNote> notes) {
         this.notes = notes;
     }
+
+    public String getVin() { return vin; }
+    public void setVin(String vin) { this.vin = vin; }
+
+    public String getPlateNumber() { return plateNumber; }
+    public void setPlateNumber(String plateNumber) { this.plateNumber = plateNumber; }
+
+    public String getEngineCode() { return engineCode; }
+    public void setEngineCode(String engineCode) { this.engineCode = engineCode; }
+
+    public TransmissionType getTransmissionType() { return transmissionType; }
+    public void setTransmissionType(TransmissionType transmissionType) { this.transmissionType = transmissionType; }
+
+    public DriveType getDriveType() { return driveType; }
+    public void setDriveType(DriveType driveType) { this.driveType = driveType; }
+
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+
+    public FuelType getFuelType() { return fuelType; }
+    public void setFuelType(FuelType fuelType) { this.fuelType = fuelType; }
+
+    public BigDecimal getFuelTankCapacityLiters() { return fuelTankCapacityLiters; }
+    public void setFuelTankCapacityLiters(BigDecimal fuelTankCapacityLiters) { this.fuelTankCapacityLiters = fuelTankCapacityLiters; }
+
+    public BigDecimal getEngineOilCapacityLiters() { return engineOilCapacityLiters; }
+    public void setEngineOilCapacityLiters(BigDecimal engineOilCapacityLiters) { this.engineOilCapacityLiters = engineOilCapacityLiters; }
+
+    public String getEngineOilType() { return engineOilType; }
+    public void setEngineOilType(String engineOilType) { this.engineOilType = engineOilType; }
+
+    public String getTireSize() { return tireSize; }
+    public void setTireSize(String tireSize) { this.tireSize = tireSize; }
+
+    public LocalDate getPurchaseDate() { return purchaseDate; }
+    public void setPurchaseDate(LocalDate purchaseDate) { this.purchaseDate = purchaseDate; }
+
+    public BigDecimal getPurchasePrice() { return purchasePrice; }
+    public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }
 }
