@@ -4,6 +4,7 @@ import com.wrenchlog.wrenchlog.dto.VehicleCreateDTO;
 import com.wrenchlog.wrenchlog.dto.VehicleResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
+import com.wrenchlog.wrenchlog.repository.ServiceReminderRepository;
 import com.wrenchlog.wrenchlog.repository.VehicleRepository;
 import com.wrenchlog.wrenchlog.service.VehicleAccessService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,12 +24,14 @@ class VehicleControllerTest {
     private VehicleRepository vehicleRepository;
     private VehicleAccessService vehicleAccessService;
     private VehicleController vehicleController;
+    private ServiceReminderRepository serviceReminderRepository;
 
     @BeforeEach
     void setUp() {
         vehicleRepository = mock(VehicleRepository.class);
         vehicleAccessService = mock(VehicleAccessService.class);
-        vehicleController = new VehicleController(vehicleRepository, vehicleAccessService);
+        serviceReminderRepository = mock(ServiceReminderRepository.class);
+        vehicleController = new VehicleController(vehicleRepository, vehicleAccessService, serviceReminderRepository);
     }
 
     @Test
