@@ -36,10 +36,11 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 20m
           script: |
             cd ~/backend
             git pull
-            docker run --rm -v "$(pwd)":/app -w /app maven:3.9.9-eclipse-temurin-21-alpine mvn clean package -DskipTests
+            docker run --rm -v "$(pwd)":/app -v ~/.m2:/root/.m2 -w /app maven:3.9.9-eclipse-temurin-21-alpine mvn clean package -DskipTests
             docker build -t wrenchlog-backend .
             docker stop backend
             docker rm backend
