@@ -30,17 +30,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to server
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build jar
+        run: mvn clean package -DskipTests
+
+      - name: Pull latest source on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 20m
           script: |
             cd ~/backend
             git pull
-            docker run --rm -v "$(pwd)":/app -v ~/.m2:/root/.m2 -w /app maven:3.9.9-eclipse-temurin-21-alpine mvn clean package -DskipTests
+
+      - name: Copy built jar to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "target/*.jar"
+          target: "~/backend/target"
+          strip_components: 1
+
+      - name: Build image and restart container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: |
+            cd ~/backend
             docker build -t wrenchlog-backend .
             docker stop backend
             docker rm backend
