@@ -189,4 +189,16 @@ public class VehicleController {
             serviceReminderRepository.save(reminder);
         }
     }
+
+    @PutMapping("/{id}/odometer")
+    public ResponseEntity<VehicleResponseDTO> updateOdometer(
+            @PathVariable Long id,
+            @Valid @RequestBody VehicleOdometerUpdateDTO dto,
+            @AuthenticationPrincipal User user
+    ) {
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
+        vehicle.setKilometers(dto.kilometers());
+        Vehicle saved = vehicleRepository.save(vehicle);
+        return ResponseEntity.ok(toResponseDTO(saved));
+    }
 }
