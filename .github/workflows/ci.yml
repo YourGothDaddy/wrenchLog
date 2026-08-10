@@ -62,6 +62,7 @@ jobs:
           source: "target/*.jar"
           target: "~/backend/target"
           strip_components: 1
+          overwrite: true
 
       - name: Build image and restart container
         uses: appleboy/ssh-action@v1.0.3
