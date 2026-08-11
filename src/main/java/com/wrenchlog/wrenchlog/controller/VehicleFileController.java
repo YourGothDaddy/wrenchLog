@@ -41,11 +41,7 @@ public class VehicleFileController {
 
     private VehicleFileResponseDTO toResponseDTO(VehicleFile file) {
         return new VehicleFileResponseDTO(
-                file.getId(),
-                file.getFileName(),
-                file.getFileType(),
-                file.getUploadDate(),
-                file.getVehicle().getId()
+                file.getId(), file.getFileName(), file.getFileType(), file.getUploadDate(), file.getVehicle().getId()
         );
     }
 
@@ -62,9 +58,7 @@ public class VehicleFileController {
                                                                         @AuthenticationPrincipal User user) {
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
         List<VehicleFileResponseDTO> files = vehicleFileRepository.findByVehicleId(vehicleId)
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+                .stream().map(this::toResponseDTO).toList();
         return ResponseEntity.ok(files);
     }
 
@@ -92,7 +86,7 @@ public class VehicleFileController {
                                            @PathVariable Long fileId,
                                            @AuthenticationPrincipal User user) {
         fileStorageService.deleteFile(fileId, vehicleId, user);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{fileId}/download-token")

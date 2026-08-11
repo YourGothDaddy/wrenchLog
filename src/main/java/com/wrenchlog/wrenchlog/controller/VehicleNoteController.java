@@ -30,11 +30,7 @@ public class VehicleNoteController {
 
     private VehicleNoteResponseDTO toResponseDTO(VehicleNote note) {
         return new VehicleNoteResponseDTO(
-                note.getId(),
-                note.getTitle(),
-                note.getContent(),
-                note.getCreatedAt(),
-                note.getVehicle().getId()
+                note.getId(), note.getTitle(), note.getContent(), note.getCreatedAt(), note.getVehicle().getId()
         );
     }
 
@@ -45,9 +41,7 @@ public class VehicleNoteController {
     ){
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
         List<VehicleNoteResponseDTO> notes = vehicleNoteRepository.findByVehicleIdOrderByCreatedAtDesc(vehicleId)
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+                .stream().map(this::toResponseDTO).toList();
         return ResponseEntity.ok(notes);
     }
 
@@ -60,7 +54,7 @@ public class VehicleNoteController {
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
         VehicleNote note = new VehicleNote(dto.title(), dto.content(), vehicle);
         VehicleNote savedNote = vehicleNoteRepository.save(note);
-        return new ResponseEntity<>(toResponseDTO(savedNote), HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(savedNote));
     }
 
     @PutMapping("/{noteId}")
@@ -99,6 +93,6 @@ public class VehicleNoteController {
         vehicleAccessService.assertOwnership(note.getVehicle(), user);
 
         vehicleNoteRepository.deleteById(noteId);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -34,12 +34,8 @@ public class ServiceLogController {
 
     private ServiceLogResponseDTO toResponseDTO(ServiceLog log) {
         return new ServiceLogResponseDTO(
-                log.getId(),
-                log.getDescription(),
-                log.getCost(),
-                log.getKilometersAtService(),
-                log.getServiceDate(),
-                log.getVehicle().getId()
+                log.getId(), log.getDescription(), log.getCost(),
+                log.getKilometersAtService(), log.getServiceDate(), log.getVehicle().getId()
         );
     }
 
@@ -54,11 +50,7 @@ public class ServiceLogController {
     public List<ServiceLogResponseDTO> getServicesForVehicle(@RequestParam Long vehicleId,
                                                              @AuthenticationPrincipal User user) {
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-
-        return serviceLogRepository.findByVehicleId(vehicleId)
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+        return serviceLogRepository.findByVehicleId(vehicleId).stream().map(this::toResponseDTO).toList();
     }
 
     @PostMapping
@@ -69,18 +61,11 @@ public class ServiceLogController {
     ) {
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
-        ServiceLog log = new ServiceLog(
-                dto.description(),
-                dto.cost(),
-                dto.kilometersAtService(),
-                dto.serviceDate(),
-                vehicle
-        );
-
+        ServiceLog log = new ServiceLog(dto.description(), dto.cost(), dto.kilometersAtService(), dto.serviceDate(), vehicle);
         ServiceLog savedLog = serviceLogRepository.save(log);
         advanceOdometerIfHigher(vehicle, dto.kilometersAtService());
 
-        return new ResponseEntity<>(toResponseDTO(savedLog), HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(savedLog));
     }
 
     @PutMapping("/{id}")
@@ -105,7 +90,7 @@ public class ServiceLogController {
         ServiceLog savedLog = serviceLogRepository.save(existing);
         advanceOdometerIfHigher(vehicle, dto.kilometersAtService());
 
-        return new ResponseEntity<>(toResponseDTO(savedLog), HttpStatus.OK);
+        return ResponseEntity.ok(toResponseDTO(savedLog));
     }
 
     @DeleteMapping("/{id}")
@@ -118,6 +103,6 @@ public class ServiceLogController {
         vehicleAccessService.assertOwnership(log.getVehicle(), user);
 
         serviceLogRepository.deleteById(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return ResponseEntity.noContent().build();
     }
 }

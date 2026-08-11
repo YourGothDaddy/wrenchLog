@@ -30,15 +30,10 @@ public class ServiceReminderController {
 
     private ServiceReminderResponseDTO toResponseDTO(ServiceReminder reminder) {
         return new ServiceReminderResponseDTO(
-                reminder.getId(),
-                reminder.getTitle(),
-                reminder.getDescription(),
-                reminder.getIntervalMonths(),
-                reminder.getIntervalOdometer(),
-                reminder.getLastServiceAtDate(),
-                reminder.getLastServiceAtOdometer(),
-                reminder.getCreatedAt(),
-                reminder.getVehicle().getId()
+                reminder.getId(), reminder.getTitle(), reminder.getDescription(),
+                reminder.getIntervalMonths(), reminder.getIntervalOdometer(),
+                reminder.getLastServiceAtDate(), reminder.getLastServiceAtOdometer(),
+                reminder.getCreatedAt(), reminder.getVehicle().getId()
         );
     }
 
@@ -46,11 +41,7 @@ public class ServiceReminderController {
     public List<ServiceReminderResponseDTO> getServiceRemindersForVehicle(@RequestParam Long vehicleId,
                                                                           @AuthenticationPrincipal User user){
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-
-        return serviceReminderRepository.findByVehicleId(vehicleId)
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+        return serviceReminderRepository.findByVehicleId(vehicleId).stream().map(this::toResponseDTO).toList();
     }
 
     @PostMapping
@@ -62,17 +53,12 @@ public class ServiceReminderController {
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
         ServiceReminder reminder = new ServiceReminder(
-                dto.title(),
-                dto.description(),
-                dto.lastServiceAtOdometer(),
-                dto.intervalOdometer(),
-                dto.intervalMonths(),
-                dto.lastServiceAtDate(),
-                vehicle
+                dto.title(), dto.description(), dto.lastServiceAtOdometer(),
+                dto.intervalOdometer(), dto.intervalMonths(), dto.lastServiceAtDate(), vehicle
         );
 
         ServiceReminder savedReminder = serviceReminderRepository.save(reminder);
-        return new ResponseEntity<>(toResponseDTO(savedReminder), HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(savedReminder));
     }
 
     @DeleteMapping("/{id}")
@@ -85,7 +71,7 @@ public class ServiceReminderController {
         vehicleAccessService.assertOwnership(reminder.getVehicle(), user);
 
         serviceReminderRepository.deleteById(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
@@ -110,6 +96,6 @@ public class ServiceReminderController {
         existing.setVehicle(vehicle);
 
         ServiceReminder savedReminder = serviceReminderRepository.save(existing);
-        return new ResponseEntity<>(toResponseDTO(savedReminder), HttpStatus.OK);
+        return ResponseEntity.ok(toResponseDTO(savedReminder));
     }
 }

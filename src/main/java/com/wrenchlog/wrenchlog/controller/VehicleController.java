@@ -30,10 +30,8 @@ public class VehicleController {
     private final ServiceReminderRepository serviceReminderRepository;
     private final BgTollService bgTollService;
 
-    public VehicleController(VehicleRepository vehicleRepository,
-                             VehicleAccessService vehicleAccessService,
-                             ServiceReminderRepository serviceReminderRepository,
-                             BgTollService bgTollService){
+    public VehicleController(VehicleRepository vehicleRepository, VehicleAccessService vehicleAccessService,
+                             ServiceReminderRepository serviceReminderRepository, BgTollService bgTollService){
         this.vehicleRepository = vehicleRepository;
         this.vehicleAccessService = vehicleAccessService;
         this.serviceReminderRepository = serviceReminderRepository;
@@ -66,7 +64,7 @@ public class VehicleController {
                                                                  @AuthenticationPrincipal User user){
         Vehicle vehicle = new Vehicle(dto.make(), dto.model(), dto.year(), dto.kilometers(), user);
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
-        return new ResponseEntity<>(toResponseDTO(savedVehicle), HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(savedVehicle));
     }
 
     @DeleteMapping("/{id}")
@@ -127,12 +125,24 @@ public class VehicleController {
         return ResponseEntity.ok(toResponseDTO(saved));
     }
 
+    @PutMapping("/{id}/odometer")
+    public ResponseEntity<VehicleResponseDTO> updateOdometer(
+            @PathVariable Long id,
+            @Valid @RequestBody VehicleOdometerUpdateDTO dto,
+            @AuthenticationPrincipal User user
+    ) {
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
+        vehicle.setKilometers(dto.kilometers());
+        Vehicle saved = vehicleRepository.save(vehicle);
+        return ResponseEntity.ok(toResponseDTO(saved));
+    }
+
     @GetMapping("/{id}/vignette-check")
-    public VignetteCheckResponseDTO checkVignette(@PathVariable Long id, @AuthenticationPrincipal User user) {
+    public ResponseEntity<VignetteCheckResponseDTO> checkVignette(@PathVariable Long id, @AuthenticationPrincipal User user) {
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
 
         if (vehicle.getPlateNumber() == null || vehicle.getPlateNumber().isBlank()) {
-            return new VignetteCheckResponseDTO(false, null, false, null, null, false, "No plate number on file");
+            return ResponseEntity.ok(new VignetteCheckResponseDTO(false, null, false, null, null, false, "No plate number on file"));
         }
 
         ServiceReminder vignetteReminder = serviceReminderRepository.findByVehicleId(vehicle.getId())
@@ -153,20 +163,20 @@ public class VehicleController {
 
         if (vignetteData.isEmpty() || vignetteData.get().validityDateTo() == null) {
             String message = hasLocalReminder ? "BGTOLL lookup unavailable" : "No vignette data found";
-            return new VignetteCheckResponseDTO(hasLocalReminder, enteredExpiryDate, false, null, null, false, message);
+            return ResponseEntity.ok(new VignetteCheckResponseDTO(hasLocalReminder, enteredExpiryDate, false, null, null, false, message));
         }
 
         LocalDate bgTollExpiryDate = vignetteData.get().validityDateTo().toLocalDate();
         String bgTollStatus = vignetteData.get().status();
 
         if (!hasLocalReminder) {
-            return new VignetteCheckResponseDTO(false, null, true, bgTollExpiryDate, bgTollStatus, false,
-                    "Vignette found via BGTOLL, not yet saved as a reminder");
+            return ResponseEntity.ok(new VignetteCheckResponseDTO(false, null, true, bgTollExpiryDate, bgTollStatus, false,
+                    "Vignette found via BGTOLL, not yet saved as a reminder"));
         }
 
         boolean match = enteredExpiryDate.isEqual(bgTollExpiryDate);
         String message = match ? "Confirmed by BGTOLL" : "Date does not match BGTOLL records";
-        return new VignetteCheckResponseDTO(true, enteredExpiryDate, true, bgTollExpiryDate, bgTollStatus, match, message);
+        return ResponseEntity.ok(new VignetteCheckResponseDTO(true, enteredExpiryDate, true, bgTollExpiryDate, bgTollStatus, match, message));
     }
 
     private void createOrUpdateDateReminder(Vehicle vehicle, String title, LocalDate dueDate) {
@@ -188,17 +198,5 @@ public class VehicleController {
             );
             serviceReminderRepository.save(reminder);
         }
-    }
-
-    @PutMapping("/{id}/odometer")
-    public ResponseEntity<VehicleResponseDTO> updateOdometer(
-            @PathVariable Long id,
-            @Valid @RequestBody VehicleOdometerUpdateDTO dto,
-            @AuthenticationPrincipal User user
-    ) {
-        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
-        vehicle.setKilometers(dto.kilometers());
-        Vehicle saved = vehicleRepository.save(vehicle);
-        return ResponseEntity.ok(toResponseDTO(saved));
     }
 }

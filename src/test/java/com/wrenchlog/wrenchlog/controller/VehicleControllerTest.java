@@ -174,7 +174,7 @@ class VehicleControllerTest {
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
 
-        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner);
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
 
         assertFalse(result.hasLocalReminder());
         assertFalse(result.bgTollFound());
@@ -201,7 +201,7 @@ class VehicleControllerTest {
                 "CA1234BC", LocalDateTime.of(2026, 12, 31, 0, 0), "Активна", true);
         when(bgTollService.lookupVignette("CA1234BC")).thenReturn(Optional.of(bgTollVignette));
 
-        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner);
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
 
         assertTrue(result.hasLocalReminder());
         assertTrue(result.bgTollFound());
@@ -229,7 +229,7 @@ class VehicleControllerTest {
                 "CA1234BC", LocalDateTime.of(2026, 12, 31, 0, 0), "Активна", true);
         when(bgTollService.lookupVignette("CA1234BC")).thenReturn(Optional.of(bgTollVignette));
 
-        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner);
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
 
         assertTrue(result.hasLocalReminder());
         assertTrue(result.bgTollFound());
@@ -253,7 +253,7 @@ class VehicleControllerTest {
                 "CA1234BC", LocalDateTime.of(2026, 12, 31, 0, 0), "Активна", true);
         when(bgTollService.lookupVignette("CA1234BC")).thenReturn(Optional.of(bgTollVignette));
 
-        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner);
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
 
         assertFalse(result.hasLocalReminder());
         assertTrue(result.bgTollFound());
@@ -278,7 +278,7 @@ class VehicleControllerTest {
         when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(reminder));
         when(bgTollService.lookupVignette("CA1234BC")).thenReturn(Optional.empty());
 
-        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner);
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
 
         assertTrue(result.hasLocalReminder());
         assertFalse(result.bgTollFound());
