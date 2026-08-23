@@ -5,6 +5,7 @@ import com.wrenchlog.wrenchlog.dto.VehicleFileResponseDTO;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
+import com.wrenchlog.wrenchlog.model.VehicleFolder;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
 import com.wrenchlog.wrenchlog.security.JwtService;
 import com.wrenchlog.wrenchlog.service.FileStorageService;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +46,7 @@ class VehicleFileControllerTest {
     }
 
     @Test
-    void uploadFile_returnsOk_withCorrectData() {
+    void uploadFile_returnsOk_withCorrectData_whenNoFolder() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
@@ -55,17 +57,41 @@ class VehicleFileControllerTest {
         VehicleFile savedFile = new VehicleFile("manual.pdf", "application/pdf", "/uploads/uuid_manual.pdf", vehicle);
         savedFile.setId(400L);
 
-        when(fileStorageService.storeFile(file, 10L, owner)).thenReturn(savedFile);
+        when(fileStorageService.storeFile(file, 10L, null, owner)).thenReturn(savedFile);
 
-        ResponseEntity<VehicleFileResponseDTO> response = vehicleFileController.uploadFile(10L, file, owner);
+        ResponseEntity<VehicleFileResponseDTO> response = vehicleFileController.uploadFile(10L, file, null, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(400L, response.getBody().id());
         assertEquals("manual.pdf", response.getBody().fileName());
+        assertNull(response.getBody().folderId());
     }
 
     @Test
-    void getVehicleFiles_returnsFiles_whenOwner() {
+    void uploadFile_returnsOk_withFolderId_whenUploadedIntoFolder() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        VehicleFolder folder = new VehicleFolder("Manuals", vehicle);
+        folder.setId(50L);
+
+        MockMultipartFile file = new MockMultipartFile("file", "manual.pdf", "application/pdf", "content".getBytes());
+
+        VehicleFile savedFile = new VehicleFile("manual.pdf", "application/pdf", "/uploads/uuid_manual.pdf", vehicle, folder);
+        savedFile.setId(400L);
+
+        when(fileStorageService.storeFile(file, 10L, 50L, owner)).thenReturn(savedFile);
+
+        ResponseEntity<VehicleFileResponseDTO> response = vehicleFileController.uploadFile(10L, file, 50L, owner);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(50L, response.getBody().folderId());
+    }
+
+    @Test
+    void getVehicleFiles_returnsRootFiles_whenFolderIdOmitted() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
         Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
@@ -75,13 +101,37 @@ class VehicleFileControllerTest {
         file.setId(400L);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
-        when(vehicleFileRepository.findByVehicleId(10L)).thenReturn(List.of(file));
+        when(vehicleFileRepository.findByVehicleIdAndFolderIsNull(10L)).thenReturn(List.of(file));
 
-        ResponseEntity<List<VehicleFileResponseDTO>> response = vehicleFileController.getVehicleFiles(10L, owner);
+        ResponseEntity<List<VehicleFileResponseDTO>> response = vehicleFileController.getVehicleFiles(10L, null, owner);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(1, response.getBody().size());
-        assertEquals("manual.pdf", response.getBody().get(0).fileName());
+        assertNull(response.getBody().get(0).folderId());
+        verify(vehicleFileRepository, never()).findByVehicleIdAndFolderId(any(), any());
+    }
+
+    @Test
+    void getVehicleFiles_returnsFolderFiles_whenFolderIdProvided() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        VehicleFolder folder = new VehicleFolder("Manuals", vehicle);
+        folder.setId(50L);
+
+        VehicleFile file = new VehicleFile("manual.pdf", "application/pdf", "/uploads/uuid_manual.pdf", vehicle, folder);
+        file.setId(400L);
+
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(vehicleFileRepository.findByVehicleIdAndFolderId(10L, 50L)).thenReturn(List.of(file));
+
+        ResponseEntity<List<VehicleFileResponseDTO>> response = vehicleFileController.getVehicleFiles(10L, 50L, owner);
+
+        assertEquals(1, response.getBody().size());
+        assertEquals(50L, response.getBody().get(0).folderId());
+        verify(vehicleFileRepository, never()).findByVehicleIdAndFolderIsNull(any());
     }
 
     @Test
@@ -93,9 +143,9 @@ class VehicleFileControllerTest {
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
 
         assertThrows(ResponseStatusException.class,
-                () -> vehicleFileController.getVehicleFiles(10L, attacker));
+                () -> vehicleFileController.getVehicleFiles(10L, null, attacker));
 
-        verify(vehicleFileRepository, never()).findByVehicleId(any());
+        verify(vehicleFileRepository, never()).findByVehicleIdAndFolderIsNull(any());
     }
 
     @Test
@@ -207,5 +257,65 @@ class VehicleFileControllerTest {
                 () -> vehicleFileController.getDownloadToken(10L, 400L, attacker));
 
         verify(jwtService, never()).generateFileDownloadToken(any(), any());
+    }
+
+    @Test
+    void moveFile_returnsOk_withUpdatedFolderId() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        VehicleFolder folder = new VehicleFolder("Manuals", vehicle);
+        folder.setId(50L);
+
+        VehicleFile movedFile = new VehicleFile("manual.pdf", "application/pdf", "/uploads/uuid_manual.pdf", vehicle, folder);
+        movedFile.setId(400L);
+
+        Map<String, Long> body = new HashMap<>();
+        body.put("folderId", 50L);
+
+        when(fileStorageService.moveFile(400L, 10L, 50L, owner)).thenReturn(movedFile);
+
+        ResponseEntity<VehicleFileResponseDTO> response = vehicleFileController.moveFile(10L, 400L, body, owner);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(50L, response.getBody().folderId());
+    }
+
+    @Test
+    void moveFile_returnsOk_withNullFolderId_whenMovedToRoot() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        VehicleFile movedFile = new VehicleFile("manual.pdf", "application/pdf", "/uploads/uuid_manual.pdf", vehicle);
+        movedFile.setId(400L);
+
+        Map<String, Long> body = new HashMap<>();
+        body.put("folderId", null);
+
+        when(fileStorageService.moveFile(400L, 10L, null, owner)).thenReturn(movedFile);
+
+        ResponseEntity<VehicleFileResponseDTO> response = vehicleFileController.moveFile(10L, 400L, body, owner);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNull(response.getBody().folderId());
+    }
+
+    @Test
+    void moveFile_throwsForbidden_whenTargetFolderNotOwned() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Map<String, Long> body = new HashMap<>();
+        body.put("folderId", 999L);
+
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))
+                .when(fileStorageService).moveFile(400L, 10L, 999L, owner);
+
+        assertThrows(ResponseStatusException.class,
+                () -> vehicleFileController.moveFile(10L, 400L, body, owner));
     }
 }
