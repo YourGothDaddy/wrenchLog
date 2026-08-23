@@ -7,5 +7,6 @@ public record VehicleFileResponseDTO(
         String fileName,
         String fileType,
         LocalDateTime uploadDate,
-        Long vehicleId
+        Long vehicleId,
+        Long folderId
 ) {}

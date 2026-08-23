@@ -41,24 +41,42 @@ public class VehicleFileController {
 
     private VehicleFileResponseDTO toResponseDTO(VehicleFile file) {
         return new VehicleFileResponseDTO(
-                file.getId(), file.getFileName(), file.getFileType(), file.getUploadDate(), file.getVehicle().getId()
+                file.getId(), file.getFileName(), file.getFileType(), file.getUploadDate(),
+                file.getVehicle().getId(),
+                file.getFolder() != null ? file.getFolder().getId() : null
         );
     }
 
     @PostMapping
     public ResponseEntity<VehicleFileResponseDTO> uploadFile(@PathVariable Long vehicleId,
                                                              @RequestParam("file") MultipartFile file,
+                                                             @RequestParam(value = "folderId", required = false) Long folderId,
                                                              @AuthenticationPrincipal User user) {
-        VehicleFile savedFile = fileStorageService.storeFile(file, vehicleId, user);
+        VehicleFile savedFile = fileStorageService.storeFile(file, vehicleId, folderId, user);
         return ResponseEntity.ok(toResponseDTO(savedFile));
+    }
+
+    @PatchMapping("/{fileId}/folder")
+    public ResponseEntity<VehicleFileResponseDTO> moveFile(@PathVariable Long vehicleId,
+                                                           @PathVariable Long fileId,
+                                                           @RequestBody Map<String, Long> body,
+                                                           @AuthenticationPrincipal User user) {
+        Long folderId = body.get("folderId");
+        VehicleFile moved = fileStorageService.moveFile(fileId, vehicleId, folderId, user);
+        return ResponseEntity.ok(toResponseDTO(moved));
     }
 
     @GetMapping
     public ResponseEntity<List<VehicleFileResponseDTO>> getVehicleFiles(@PathVariable Long vehicleId,
+                                                                        @RequestParam(value = "folderId", required = false) Long folderId,
                                                                         @AuthenticationPrincipal User user) {
         vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
-        List<VehicleFileResponseDTO> files = vehicleFileRepository.findByVehicleId(vehicleId)
-                .stream().map(this::toResponseDTO).toList();
+
+        List<VehicleFile> vehicleFiles = folderId != null
+                ? vehicleFileRepository.findByVehicleIdAndFolderId(vehicleId, folderId)
+                : vehicleFileRepository.findByVehicleIdAndFolderIsNull(vehicleId);
+
+        List<VehicleFileResponseDTO> files = vehicleFiles.stream().map(this::toResponseDTO).toList();
         return ResponseEntity.ok(files);
     }
 

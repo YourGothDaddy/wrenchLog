@@ -9,4 +9,8 @@ import java.util.List;
 @Repository
 public interface VehicleFileRepository extends JpaRepository<VehicleFile, Long> {
     List<VehicleFile> findByVehicleId(Long vehicleId);
+
+    List<VehicleFile> findByVehicleIdAndFolderIsNull(Long vehicleId);
+
+    List<VehicleFile> findByVehicleIdAndFolderId(Long vehicleId, Long folderId);
 }

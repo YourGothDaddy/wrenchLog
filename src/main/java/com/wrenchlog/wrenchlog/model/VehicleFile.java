@@ -14,6 +14,10 @@ import java.time.LocalDateTime;
                 @Index(
                         name = "idx_vehicle_files_vehicle_id",
                         columnList = "vehicle_id"
+                ),
+                @Index(
+                        name = "idx_vehicle_files_folder_id",
+                        columnList = "folder_id"
                 )
         }
 )
@@ -48,12 +52,24 @@ public class VehicleFile {
     )
     @JsonIgnoreProperties({
             "files",
+            "folders",
             "serviceLogs",
             "reminders",
             "notes",
             "user"
     })
     private Vehicle vehicle;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "folder_id",
+            nullable = true
+    )
+    @JsonIgnoreProperties({
+            "vehicle"
+    })
+    private VehicleFolder folder;
 
 
     public VehicleFile() {
@@ -70,6 +86,21 @@ public class VehicleFile {
         this.type = type;
         this.path = path;
         this.vehicle = vehicle;
+    }
+
+
+    public VehicleFile(
+            String name,
+            String type,
+            String path,
+            Vehicle vehicle,
+            VehicleFolder folder
+    ) {
+        this.name = name;
+        this.type = type;
+        this.path = path;
+        this.vehicle = vehicle;
+        this.folder = folder;
     }
 
 
@@ -124,5 +155,14 @@ public class VehicleFile {
 
     public void setVehicle(Vehicle vehicle) {
         this.vehicle = vehicle;
+    }
+
+
+    public VehicleFolder getFolder() {
+        return folder;
+    }
+
+    public void setFolder(VehicleFolder folder) {
+        this.folder = folder;
     }
 }

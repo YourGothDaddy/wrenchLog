@@ -4,7 +4,9 @@ import com.wrenchlog.wrenchlog.dto.FileDownloadDto;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
 import com.wrenchlog.wrenchlog.model.VehicleFile;
+import com.wrenchlog.wrenchlog.model.VehicleFolder;
 import com.wrenchlog.wrenchlog.repository.VehicleFileRepository;
+import com.wrenchlog.wrenchlog.repository.VehicleFolderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +32,7 @@ public class FileStorageService {
 
     private final Path fileStorageLocation;
     private final VehicleFileRepository vehicleFileRepository;
+    private final VehicleFolderRepository vehicleFolderRepository;
     private final VehicleAccessService vehicleAccessService;
 
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
@@ -42,9 +45,11 @@ public class FileStorageService {
 
     public FileStorageService(@Value("${file.upload-dir}") String uploadDir,
                               VehicleFileRepository vehicleFileRepository,
+                              VehicleFolderRepository vehicleFolderRepository,
                               VehicleAccessService vehicleAccessService){
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.vehicleFileRepository = vehicleFileRepository;
+        this.vehicleFolderRepository = vehicleFolderRepository;
         this.vehicleAccessService = vehicleAccessService;
 
         try{
@@ -54,7 +59,7 @@ public class FileStorageService {
         }
     }
 
-    public VehicleFile storeFile(MultipartFile file, Long vehicleId, User user){
+    public VehicleFile storeFile(MultipartFile file, Long vehicleId, Long folderId, User user){
 
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Cannot upload an empty file.");
@@ -81,6 +86,7 @@ public class FileStorageService {
         }
 
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
+        VehicleFolder folder = folderId != null ? getOwnedFolderOrThrow(folderId, vehicle) : null;
 
         try{
             String uniqueFileName = UUID.randomUUID().toString() + "_" + originalFileName;
@@ -90,7 +96,7 @@ public class FileStorageService {
             String finalContentType = isAllowedMime ? contentType : "application/octet-stream";
 
             VehicleFile vehicleFile = new VehicleFile(
-                    originalFileName, finalContentType, targetLocation.toString(), vehicle
+                    originalFileName, finalContentType, targetLocation.toString(), vehicle, folder
             );
             return vehicleFileRepository.save(vehicleFile);
         }catch (IOException ex){
@@ -136,5 +142,31 @@ public class FileStorageService {
         }
 
         return true;
+    }
+
+    public VehicleFile moveFile(Long fileId, Long vehicleId, Long folderId, User user){
+        VehicleFile vehicleFile = vehicleFileRepository.findById(fileId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
+
+        if (!vehicleFile.getVehicle().getId().equals(vehicleId)) {
+            throw new IllegalArgumentException("File does not belong to the specified vehicle.");
+        }
+
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
+        VehicleFolder folder = folderId != null ? getOwnedFolderOrThrow(folderId, vehicle) : null;
+
+        vehicleFile.setFolder(folder);
+        return vehicleFileRepository.save(vehicleFile);
+    }
+
+    private VehicleFolder getOwnedFolderOrThrow(Long folderId, Vehicle vehicle) {
+        VehicleFolder folder = vehicleFolderRepository.findById(folderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Folder not found"));
+
+        if (!folder.getVehicle().getId().equals(vehicle.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Folder does not belong to this vehicle");
+        }
+
+        return folder;
     }
 }
