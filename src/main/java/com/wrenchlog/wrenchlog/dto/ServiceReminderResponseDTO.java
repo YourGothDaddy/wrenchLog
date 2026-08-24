@@ -1,5 +1,7 @@
 package com.wrenchlog.wrenchlog.dto;
 
+import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -12,5 +14,6 @@ public record ServiceReminderResponseDTO(
         LocalDate lastServiceAtDate,
         Integer lastServiceAtOdometer,
         LocalDateTime createdAt,
-        Long vehicleId
+        Long vehicleId,
+        ReminderSourceType sourceType
 ) {}

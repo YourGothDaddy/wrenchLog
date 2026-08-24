@@ -4,6 +4,7 @@ import com.wrenchlog.wrenchlog.dto.BgTollVignetteDTO;
 import com.wrenchlog.wrenchlog.dto.VehicleCreateDTO;
 import com.wrenchlog.wrenchlog.dto.VehicleResponseDTO;
 import com.wrenchlog.wrenchlog.dto.VignetteCheckResponseDTO;
+import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
 import com.wrenchlog.wrenchlog.model.ServiceReminder;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
@@ -192,7 +193,8 @@ class VehicleControllerTest {
         vehicle.setPlateNumber("CA1234BC");
 
         ServiceReminder reminder = new ServiceReminder(
-                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 12, 31), vehicle);
+                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 12, 31),
+                ReminderSourceType.VIGNETTE, vehicle);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(reminder));
@@ -211,6 +213,58 @@ class VehicleControllerTest {
     }
 
     @Test
+    void checkVignette_returnsMatch_whenReminderRenamed_becauseMatchIsBySourceTypeNotTitle() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+        vehicle.setPlateNumber("CA1234BC");
+
+        ServiceReminder reminder = new ServiceReminder(
+                "My Sticker", null, null, null, 12, LocalDate.of(2025, 12, 31),
+                ReminderSourceType.VIGNETTE, vehicle);
+
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(reminder));
+
+        BgTollVignetteDTO bgTollVignette = new BgTollVignetteDTO(
+                "CA1234BC", LocalDateTime.of(2026, 12, 31, 0, 0), "Активна", true);
+        when(bgTollService.lookupVignette("CA1234BC")).thenReturn(Optional.of(bgTollVignette));
+
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
+
+        assertTrue(result.hasLocalReminder());
+        assertTrue(result.match());
+        assertEquals("Confirmed by BGTOLL", result.message());
+    }
+
+    @Test
+    void checkVignette_ignoresManualReminder_evenIfTitledVignetteRenewal() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+        vehicle.setPlateNumber("CA1234BC");
+
+        ServiceReminder manualReminder = new ServiceReminder(
+                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 12, 31), vehicle);
+
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(manualReminder));
+
+        BgTollVignetteDTO bgTollVignette = new BgTollVignetteDTO(
+                "CA1234BC", LocalDateTime.of(2026, 12, 31, 0, 0), "Активна", true);
+        when(bgTollService.lookupVignette("CA1234BC")).thenReturn(Optional.of(bgTollVignette));
+
+        VignetteCheckResponseDTO result = vehicleController.checkVignette(10L, owner).getBody();
+
+        assertFalse(result.hasLocalReminder());
+        assertEquals("Vignette found via BGTOLL, not yet saved as a reminder", result.message());
+    }
+
+    @Test
     void checkVignette_returnsMismatch_whenDatesDiffer() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
@@ -220,7 +274,8 @@ class VehicleControllerTest {
         vehicle.setPlateNumber("CA1234BC");
 
         ServiceReminder reminder = new ServiceReminder(
-                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 6, 1), vehicle);
+                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 6, 1),
+                ReminderSourceType.VIGNETTE, vehicle);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(reminder));
@@ -272,7 +327,8 @@ class VehicleControllerTest {
         vehicle.setPlateNumber("CA1234BC");
 
         ServiceReminder reminder = new ServiceReminder(
-                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 12, 31), vehicle);
+                "Vignette renewal", null, null, null, 12, LocalDate.of(2025, 12, 31),
+                ReminderSourceType.VIGNETTE, vehicle);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.findByVehicleId(10L)).thenReturn(List.of(reminder));

@@ -1,5 +1,6 @@
 package com.wrenchlog.wrenchlog.dto;
 
+import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -21,5 +22,7 @@ public record ServiceReminderCreateDTO(
         @PositiveOrZero(message = "Interval in months cannot be negative")
         Integer intervalMonths,
 
-        LocalDate lastServiceAtDate
+        LocalDate lastServiceAtDate,
+
+        ReminderSourceType sourceType
 ) {}

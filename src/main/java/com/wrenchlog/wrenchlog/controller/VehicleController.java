@@ -3,6 +3,7 @@ package com.wrenchlog.wrenchlog.controller;
 import com.wrenchlog.wrenchlog.dto.*;
 import com.wrenchlog.wrenchlog.enums.DriveType;
 import com.wrenchlog.wrenchlog.enums.FuelType;
+import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
 import com.wrenchlog.wrenchlog.enums.TransmissionType;
 import com.wrenchlog.wrenchlog.model.ServiceReminder;
 import com.wrenchlog.wrenchlog.model.User;
@@ -118,9 +119,9 @@ public class VehicleController {
 
         Vehicle saved = vehicleRepository.save(vehicle);
 
-        createOrUpdateDateReminder(saved, "Insurance renewal", dto.insuranceExpiryDate());
-        createOrUpdateDateReminder(saved, "Vignette renewal", dto.vignetteExpiryDate());
-        createOrUpdateDateReminder(saved, "Inspection due", dto.inspectionDueDate());
+        createOrUpdateDateReminder(saved, "Insurance renewal", ReminderSourceType.INSURANCE, dto.insuranceExpiryDate());
+        createOrUpdateDateReminder(saved, "Vignette renewal", ReminderSourceType.VIGNETTE, dto.vignetteExpiryDate());
+        createOrUpdateDateReminder(saved, "Inspection due", ReminderSourceType.INSPECTION, dto.inspectionDueDate());
 
         return ResponseEntity.ok(toResponseDTO(saved));
     }
@@ -147,7 +148,7 @@ public class VehicleController {
 
         ServiceReminder vignetteReminder = serviceReminderRepository.findByVehicleId(vehicle.getId())
                 .stream()
-                .filter(r -> "Vignette renewal".equals(r.getTitle()))
+                .filter(r -> r.getSourceType() == ReminderSourceType.VIGNETTE)
                 .findFirst()
                 .orElse(null);
 
@@ -177,6 +178,27 @@ public class VehicleController {
         boolean match = enteredExpiryDate.isEqual(bgTollExpiryDate);
         String message = match ? "Confirmed by BGTOLL" : "Date does not match BGTOLL records";
         return ResponseEntity.ok(new VignetteCheckResponseDTO(true, enteredExpiryDate, true, bgTollExpiryDate, bgTollStatus, match, message));
+    }
+
+    private void createOrUpdateDateReminder(Vehicle vehicle, String title, ReminderSourceType sourceType, LocalDate dueDate) {
+        if (dueDate == null) return;
+
+        ServiceReminder existing = serviceReminderRepository.findByVehicleId(vehicle.getId())
+                .stream()
+                .filter(r -> r.getSourceType() == sourceType)
+                .findFirst()
+                .orElse(null);
+
+        if (existing != null) {
+            existing.setLastServiceAtDate(dueDate.minusYears(1));
+            existing.setIntervalMonths(12);
+            serviceReminderRepository.save(existing);
+        } else {
+            ServiceReminder reminder = new ServiceReminder(
+                    title, null, null, null, 12, dueDate.minusYears(1), sourceType, vehicle
+            );
+            serviceReminderRepository.save(reminder);
+        }
     }
 
     private void createOrUpdateDateReminder(Vehicle vehicle, String title, LocalDate dueDate) {

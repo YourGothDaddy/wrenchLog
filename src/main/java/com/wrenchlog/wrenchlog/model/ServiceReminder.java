@@ -1,6 +1,7 @@
 package com.wrenchlog.wrenchlog.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -45,6 +46,11 @@ public class ServiceReminder {
     private LocalDate lastServiceAtDate;
 
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 20)
+    private ReminderSourceType sourceType = ReminderSourceType.MANUAL;
+
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -78,6 +84,27 @@ public class ServiceReminder {
         this.intervalOdometer = intervalOdometer;
         this.intervalMonths = intervalMonths;
         this.lastServiceAtDate = lastServiceAtDate;
+        this.vehicle = vehicle;
+    }
+
+
+    public ServiceReminder(
+            String title,
+            String description,
+            Integer lastServiceAtOdometer,
+            Integer intervalOdometer,
+            Integer intervalMonths,
+            LocalDate lastServiceAtDate,
+            ReminderSourceType sourceType,
+            Vehicle vehicle
+    ) {
+        this.title = title;
+        this.description = description;
+        this.lastServiceAtOdometer = lastServiceAtOdometer;
+        this.intervalOdometer = intervalOdometer;
+        this.intervalMonths = intervalMonths;
+        this.lastServiceAtDate = lastServiceAtDate;
+        this.sourceType = sourceType;
         this.vehicle = vehicle;
     }
 
@@ -142,6 +169,15 @@ public class ServiceReminder {
 
     public void setLastServiceAtDate(LocalDate lastServiceAtDate) {
         this.lastServiceAtDate = lastServiceAtDate;
+    }
+
+
+    public ReminderSourceType getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(ReminderSourceType sourceType) {
+        this.sourceType = sourceType;
     }
 
 

@@ -2,6 +2,7 @@ package com.wrenchlog.wrenchlog.controller;
 
 import com.wrenchlog.wrenchlog.dto.ServiceReminderCreateDTO;
 import com.wrenchlog.wrenchlog.dto.ServiceReminderResponseDTO;
+import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
 import com.wrenchlog.wrenchlog.model.ServiceReminder;
 import com.wrenchlog.wrenchlog.model.User;
 import com.wrenchlog.wrenchlog.model.Vehicle;
@@ -33,7 +34,7 @@ public class ServiceReminderController {
                 reminder.getId(), reminder.getTitle(), reminder.getDescription(),
                 reminder.getIntervalMonths(), reminder.getIntervalOdometer(),
                 reminder.getLastServiceAtDate(), reminder.getLastServiceAtOdometer(),
-                reminder.getCreatedAt(), reminder.getVehicle().getId()
+                reminder.getCreatedAt(), reminder.getVehicle().getId(), reminder.getSourceType()
         );
     }
 
@@ -52,9 +53,11 @@ public class ServiceReminderController {
     ){
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
+        ReminderSourceType sourceType = dto.sourceType() != null ? dto.sourceType() : ReminderSourceType.MANUAL;
+
         ServiceReminder reminder = new ServiceReminder(
                 dto.title(), dto.description(), dto.lastServiceAtOdometer(),
-                dto.intervalOdometer(), dto.intervalMonths(), dto.lastServiceAtDate(), vehicle
+                dto.intervalOdometer(), dto.intervalMonths(), dto.lastServiceAtDate(), sourceType, vehicle
         );
 
         ServiceReminder savedReminder = serviceReminderRepository.save(reminder);
