@@ -1,0 +1,1 @@
+ALTER TABLE service_reminders ADD COLUMN verified_expiry_date DATE NULL;

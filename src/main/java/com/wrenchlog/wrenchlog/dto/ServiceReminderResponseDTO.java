@@ -15,5 +15,6 @@ public record ServiceReminderResponseDTO(
         Integer lastServiceAtOdometer,
         LocalDateTime createdAt,
         Long vehicleId,
-        ReminderSourceType sourceType
+        ReminderSourceType sourceType,
+        LocalDate verifiedExpiryDate
 ) {}

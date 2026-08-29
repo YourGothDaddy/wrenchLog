@@ -2,7 +2,6 @@ package com.wrenchlog.wrenchlog.dto;
 
 import com.wrenchlog.wrenchlog.enums.ReminderSourceType;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.time.LocalDate;
@@ -24,5 +23,7 @@ public record ServiceReminderCreateDTO(
 
         LocalDate lastServiceAtDate,
 
-        ReminderSourceType sourceType
+        ReminderSourceType sourceType,
+
+        LocalDate verifiedExpiryDate
 ) {}

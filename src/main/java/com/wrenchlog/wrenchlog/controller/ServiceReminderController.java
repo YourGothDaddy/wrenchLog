@@ -15,7 +15,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/reminders")
@@ -34,7 +36,8 @@ public class ServiceReminderController {
                 reminder.getId(), reminder.getTitle(), reminder.getDescription(),
                 reminder.getIntervalMonths(), reminder.getIntervalOdometer(),
                 reminder.getLastServiceAtDate(), reminder.getLastServiceAtOdometer(),
-                reminder.getCreatedAt(), reminder.getVehicle().getId(), reminder.getSourceType()
+                reminder.getCreatedAt(), reminder.getVehicle().getId(), reminder.getSourceType(),
+                reminder.getVerifiedExpiryDate()
         );
     }
 
@@ -59,6 +62,8 @@ public class ServiceReminderController {
                 dto.title(), dto.description(), dto.lastServiceAtOdometer(),
                 dto.intervalOdometer(), dto.intervalMonths(), dto.lastServiceAtDate(), sourceType, vehicle
         );
+
+        reminder.setVerifiedExpiryDate(dto.verifiedExpiryDate());
 
         ServiceReminder savedReminder = serviceReminderRepository.save(reminder);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(savedReminder));
@@ -90,6 +95,8 @@ public class ServiceReminderController {
 
         Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(vehicleId, user);
 
+        LocalDate previousLastServiceAtDate = existing.getLastServiceAtDate();
+
         existing.setTitle(dto.title());
         existing.setDescription(dto.description());
         existing.setLastServiceAtOdometer(dto.lastServiceAtOdometer());
@@ -97,6 +104,13 @@ public class ServiceReminderController {
         existing.setIntervalMonths(dto.intervalMonths());
         existing.setLastServiceAtDate(dto.lastServiceAtDate());
         existing.setVehicle(vehicle);
+
+        boolean dateChanged = !Objects.equals(previousLastServiceAtDate, dto.lastServiceAtDate());
+        if (dto.verifiedExpiryDate() != null) {
+            existing.setVerifiedExpiryDate(dto.verifiedExpiryDate());
+        } else if (dateChanged) {
+            existing.setVerifiedExpiryDate(null);
+        }
 
         ServiceReminder savedReminder = serviceReminderRepository.save(existing);
         return ResponseEntity.ok(toResponseDTO(savedReminder));

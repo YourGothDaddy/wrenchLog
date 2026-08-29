@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -82,7 +83,7 @@ class ServiceReminderControllerTest {
         vehicle.setId(10L);
 
         ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
-                "Timing belt", "Replace every 100k km", null, 10000, 12, null, null);
+                "Timing belt", "Replace every 100k km", null, 10000, 12, null, null, null);
 
         ServiceReminder saved = new ServiceReminder(
                 "Timing belt", "Replace every 100k km", null, 10000, 12, null, vehicle);
@@ -110,7 +111,7 @@ class ServiceReminderControllerTest {
         vehicle.setId(10L);
 
         ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
-                "Oil change", null, null, null, null, null, null);
+                "Oil change", null, null, null, null, null, null, null);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.save(any(ServiceReminder.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -130,7 +131,7 @@ class ServiceReminderControllerTest {
         vehicle.setId(10L);
 
         ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
-                "Vignette renewal", null, null, null, 12, null, ReminderSourceType.VIGNETTE);
+                "Vignette renewal", null, null, null, 12, null, ReminderSourceType.VIGNETTE, null);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
         when(serviceReminderRepository.save(any(ServiceReminder.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -146,7 +147,7 @@ class ServiceReminderControllerTest {
         User attacker = new User("bob", "bob@test.com", "hashed");
         attacker.setId(2L);
 
-        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null, null);
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null, null, null);
 
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, attacker))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
@@ -172,7 +173,7 @@ class ServiceReminderControllerTest {
         existing.setId(200L);
         existing.setCreatedAt(originalCreatedAt);
 
-        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Updated title", null, null, null, null, null, null);
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Updated title", null, null, null, null, null, null, null);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
@@ -201,7 +202,7 @@ class ServiceReminderControllerTest {
                 ReminderSourceType.VIGNETTE, vehicle);
         existing.setId(200L);
 
-        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("My Sticker", null, null, null, 12, null, null);
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("My Sticker", null, null, null, 12, null, null, null);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
         when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
@@ -215,11 +216,102 @@ class ServiceReminderControllerTest {
     }
 
     @Test
+    void modifyServiceReminder_preservesVerifiedExpiryDate_whenOnlyTitleChanges() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        LocalDate lastServiceAtDate = LocalDate.of(2025, 8, 13);
+        LocalDate verifiedExpiryDate = LocalDate.of(2026, 8, 13);
+
+        ServiceReminder existing = new ServiceReminder(
+                "Inspection due", null, null, null, 12, lastServiceAtDate,
+                ReminderSourceType.INSPECTION, vehicle);
+        existing.setId(200L);
+        existing.setVerifiedExpiryDate(verifiedExpiryDate);
+
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
+                "Annual RTA Check", null, null, null, 12, lastServiceAtDate, null, null);
+
+        when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceReminderRepository.save(any(ServiceReminder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<ServiceReminderResponseDTO> response =
+                serviceReminderController.modifyServiceReminder(200L, 10L, dto, owner);
+
+        assertEquals("Annual RTA Check", response.getBody().title());
+        assertEquals(verifiedExpiryDate, response.getBody().verifiedExpiryDate());
+    }
+
+    @Test
+    void modifyServiceReminder_clearsVerifiedExpiryDate_whenDateChanges() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        LocalDate oldDate = LocalDate.of(2025, 8, 13);
+        LocalDate newDate = LocalDate.of(2025, 9, 1);
+        LocalDate verifiedExpiryDate = LocalDate.of(2026, 8, 13);
+
+        ServiceReminder existing = new ServiceReminder(
+                "Inspection due", null, null, null, 12, oldDate,
+                ReminderSourceType.INSPECTION, vehicle);
+        existing.setId(200L);
+        existing.setVerifiedExpiryDate(verifiedExpiryDate);
+
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
+                "Inspection due", null, null, null, 12, newDate, null, null);
+
+        when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceReminderRepository.save(any(ServiceReminder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<ServiceReminderResponseDTO> response =
+                serviceReminderController.modifyServiceReminder(200L, 10L, dto, owner);
+
+        assertNull(response.getBody().verifiedExpiryDate());
+    }
+
+    @Test
+    void modifyServiceReminder_setsVerifiedExpiryDate_whenExplicitlyProvided() {
+        User owner = new User("alice", "alice@test.com", "hashed");
+        owner.setId(1L);
+
+        Vehicle vehicle = new Vehicle("Toyota", "Corolla", 2020, 50000, owner);
+        vehicle.setId(10L);
+
+        LocalDate newDate = LocalDate.of(2025, 9, 1);
+        LocalDate rtaExpiryDate = LocalDate.of(2026, 9, 1);
+
+        ServiceReminder existing = new ServiceReminder(
+                "Inspection due", null, null, null, 12, LocalDate.of(2025, 8, 13),
+                ReminderSourceType.INSPECTION, vehicle);
+        existing.setId(200L);
+
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
+                "Inspection due", null, null, null, 12, newDate, null, rtaExpiryDate);
+
+        when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
+        when(vehicleAccessService.getOwnedVehicleOrThrow(10L, owner)).thenReturn(vehicle);
+        when(serviceReminderRepository.save(any(ServiceReminder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<ServiceReminderResponseDTO> response =
+                serviceReminderController.modifyServiceReminder(200L, 10L, dto, owner);
+
+        assertEquals(rtaExpiryDate, response.getBody().verifiedExpiryDate());
+    }
+
+    @Test
     void modifyServiceReminder_throwsNotFound_whenReminderMissing() {
         User owner = new User("alice", "alice@test.com", "hashed");
         owner.setId(1L);
 
-        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null, null);
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null, null, null);
 
         when(serviceReminderRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -245,7 +337,7 @@ class ServiceReminderControllerTest {
                 "Title", null, null, null, null, null, vehicle);
         existing.setId(200L);
 
-        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null, null);
+        ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO("Title", null, null, null, null, null, null, null);
 
         when(serviceReminderRepository.findById(200L)).thenReturn(Optional.of(existing));
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))
@@ -319,7 +411,7 @@ class ServiceReminderControllerTest {
     @Test
     void addServiceReminder_rejectsNegativeOdometer_beforeReachingRepository() {
         ServiceReminderCreateDTO dto = new ServiceReminderCreateDTO(
-                "Title", null, -35, null, null, null, null);
+                "Title", null, -35, null, null, null, null, null);
 
         var violations = jakarta.validation.Validation
                 .buildDefaultValidatorFactory()

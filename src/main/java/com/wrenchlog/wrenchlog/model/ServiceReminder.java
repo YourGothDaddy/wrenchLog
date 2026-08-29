@@ -45,6 +45,8 @@ public class ServiceReminder {
 
     private LocalDate lastServiceAtDate;
 
+    private LocalDate verifiedExpiryDate;
+
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 20)
@@ -196,5 +198,13 @@ public class ServiceReminder {
 
     public void setVehicle(Vehicle vehicle) {
         this.vehicle = vehicle;
+    }
+
+    public LocalDate getVerifiedExpiryDate() {
+        return verifiedExpiryDate;
+    }
+
+    public void setVerifiedExpiryDate(LocalDate verifiedExpiryDate) {
+        this.verifiedExpiryDate = verifiedExpiryDate;
     }
 }
