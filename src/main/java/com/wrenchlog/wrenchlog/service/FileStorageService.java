@@ -38,10 +38,11 @@ public class FileStorageService {
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "application/pdf", "image/jpeg", "image/png", "image/webp",
             "image/vnd.dwg", "image/x-dwg", "application/acad",
-            "model/vnd.dwf", "drawing/x-dwf"
+            "model/vnd.dwf", "drawing/x-dwf",
+            "model/vnd.dwfx+xps"
     );
 
-    private static final List<String> ALLOWED_EXTENSIONS = List.of(".dwg", ".dwf");
+    private static final List<String> ALLOWED_EXTENSIONS = List.of(".dwg", ".dwf", ".dwfx");
 
     public FileStorageService(@Value("${file.upload-dir}") String uploadDir,
                               VehicleFileRepository vehicleFileRepository,
