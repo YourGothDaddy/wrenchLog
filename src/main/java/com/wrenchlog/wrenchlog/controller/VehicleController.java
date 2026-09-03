@@ -201,24 +201,17 @@ public class VehicleController {
         }
     }
 
-    private void createOrUpdateDateReminder(Vehicle vehicle, String title, LocalDate dueDate) {
-        if (dueDate == null) return;
-
-        ServiceReminder existing = serviceReminderRepository.findByVehicleId(vehicle.getId())
-                .stream()
-                .filter(r -> title.equals(r.getTitle()))
-                .findFirst()
-                .orElse(null);
-
-        if (existing != null) {
-            existing.setLastServiceAtDate(dueDate.minusYears(1));
-            existing.setIntervalMonths(12);
-            serviceReminderRepository.save(existing);
-        } else {
-            ServiceReminder reminder = new ServiceReminder(
-                    title, null, null, null, 12, dueDate.minusYears(1), vehicle
-            );
-            serviceReminderRepository.save(reminder);
-        }
+    @PutMapping("/{id}/identity")
+    public ResponseEntity<VehicleResponseDTO> updateVehicleIdentity(
+            @PathVariable Long id,
+            @Valid @RequestBody VehicleIdentityUpdateDTO dto,
+            @AuthenticationPrincipal User user
+    ) {
+        Vehicle vehicle = vehicleAccessService.getOwnedVehicleOrThrow(id, user);
+        vehicle.setMake(dto.make());
+        vehicle.setModel(dto.model());
+        vehicle.setYear(dto.year());
+        Vehicle saved = vehicleRepository.save(vehicle);
+        return ResponseEntity.ok(toResponseDTO(saved));
     }
 }
