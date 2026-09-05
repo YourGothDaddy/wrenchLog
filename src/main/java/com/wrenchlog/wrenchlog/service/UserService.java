@@ -59,4 +59,9 @@ public class UserService {
 
         return new LoginResponse(user.getId(), user.getUsername(), user.getEmail(), token);
     }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new SecurityException("User not found"));
+    }
 }
