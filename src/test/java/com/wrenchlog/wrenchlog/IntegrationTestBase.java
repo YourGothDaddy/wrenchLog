@@ -34,7 +34,8 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("app.jwt.secret", () -> "integration-test-secret-key-at-least-256-bits-long-for-hs512-signing");
-        registry.add("app.jwt.expiration-ms", () -> "3600000");
+        registry.add("app.jwt.expiration-ms", () -> "86400000");
+        registry.add("app.jwt.refresh-expiration-ms", () -> "604800000");
         registry.add("app.cors.allowed-origin", () -> "http://localhost:5173");
         registry.add("app.cookie.secure", () -> "false");
         registry.add("file.upload-dir", () -> System.getProperty("java.io.tmpdir") + "/wrenchlog-test-uploads");
